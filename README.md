@@ -13,16 +13,19 @@ Lyrics Float reads the song and playback position from the Spotify desktop app t
 
 - Ubuntu Linux with a graphical desktop and a user systemd session.
 - The Spotify desktop app. The browser player is not supported.
-- Python 3.11 or newer, `venv`, and an internet connection.
+- Python 3.10 or newer, `venv`, and an internet connection.
+- This has been tested on Ubuntu 24.04 x86-64. Other Ubuntu releases and architectures have not yet been tested.
 - For Qt's X11 platform on Ubuntu, install `libxcb-cursor0` if it is missing.
 
 ```bash
-sudo apt install python3-venv libxcb-cursor0
+sudo apt install git python3-venv libxcb-cursor0
+git clone https://github.com/taehyeon03/lyrics-float.git
+cd lyrics-float
 ./setup.sh
 ./실행하기.sh
 ```
 
-Run the commands from this repository's directory. The launcher runs the app in your desktop user session. This allows the app to read the MPRIS interface of Spotify's Snap package without changing its security policy.
+GitHub access to this private repository is required to clone it. Setup creates a user-local application shortcut. Search for **Lyrics Float** in the app menu. If you move the folder, run `./setup.sh` again. Setup uses `uv` when it is available and otherwise uses `pip`. The launcher runs the app in your desktop user session. This allows the app to read the MPRIS interface of Spotify's Snap package without changing its security policy.
 
 ### Controls
 
@@ -44,15 +47,19 @@ The app sends the title, artist, album, and duration of the current track to LRC
 
 ### 준비와 실행
 
-Ubuntu의 그래픽 환경과 Spotify 데스크톱 앱이 필요합니다. 브라우저에서 재생하는 Spotify는 아직 지원하지 않습니다. 인터넷과 Python 3.11 이상도 필요합니다.
+Ubuntu의 그래픽 환경과 Spotify 데스크톱 앱이 필요합니다. 브라우저에서 재생하는 Spotify는 아직 지원하지 않습니다. 인터넷과 Python 3.10 이상도 필요합니다. 현재 Ubuntu 24.04의 x86-64 컴퓨터에서 확인했습니다. 다른 Ubuntu 버전과 CPU에서는 아직 검증하지 못했습니다.
 
-저장소 폴더에서 아래 명령을 실행하세요.
+비공개 저장소에 접근할 수 있는 GitHub 계정으로 인증한 뒤 아래 명령을 실행하세요.
 
 ```bash
-sudo apt install python3-venv libxcb-cursor0
+sudo apt install git python3-venv libxcb-cursor0
+git clone https://github.com/taehyeon03/lyrics-float.git
+cd lyrics-float
 ./setup.sh
 ./실행하기.sh
 ```
+
+설치가 끝나면 앱 목록에서 **가사 플로팅**을 검색해 실행할 수 있습니다. 폴더를 옮기면 새 위치에서 `./setup.sh`를 다시 실행하세요. 설치할 때 `uv`가 있으면 이를 사용하고, 없으면 `pip`를 사용합니다.
 
 실행 스크립트는 사용자 세션에서 앱을 실행합니다. 따라서 Spotify의 Snap 패키지가 제공하는 재생 정보에 접근할 수 있습니다. Spotify의 보안 정책은 변경하지 않습니다.
 
