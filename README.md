@@ -35,7 +35,7 @@ Setup creates a user-local application shortcut. Search for **Lyrics Float** in 
 4. Select **⚙** for settings. **배경** adjusts background opacity. **글자 색** changes the current line's color. **배경 색** changes the background color. **글꼴** chooses the font. **가 −** and **가 +** change the text size. Enable **움직이는 물결** to show a decorative wave. Enable **노래 타임라인 표시** for playback progress and **재생 제어 버튼 표시** for previous, play/pause, and next controls. Click or drag the timeline to seek when Spotify allows it.
 5. Select **×** to close the app. Settings are saved locally.
 
-Lyrics depend on LRCLIB coverage. Korean lyrics work when the service has a matching record with timestamps. Matching and timing can be inaccurate. Fullscreen applications may cover the window. This version has been developed for Ubuntu; Android is not yet supported.
+Lyrics depend on LRCLIB coverage. Korean lyrics work when the service has a matching record with timestamps. Matching and timing can be inaccurate. Fullscreen applications may cover the window. The desktop version has been developed for Ubuntu. An Android version is described below.
 
 ### Privacy
 
@@ -71,7 +71,7 @@ cd lyrics-float
 4. **⚙**를 눌러 설정을 엽니다. **배경**으로 투명도를 바꿉니다. **글자 색**으로 현재 가사의 색을 바꿉니다. **배경 색**으로 배경의 색을 바꿉니다. **글꼴**로 글꼴을 선택합니다. **가 −**, **가 +**로 글자 크기를 바꿉니다. **움직이는 물결**을 켜면 부드럽게 움직이는 장식이 나타납니다. **노래 타임라인 표시**와 **재생 제어 버튼 표시**는 각각 켜고 끌 수 있습니다. 재생 제어 버튼을 켜면 이전 곡, 재생·일시 정지, 다음 곡 버튼이 함께 표시됩니다. Spotify가 이동을 허용하는 곡에서는 타임라인을 누르거나 끌어서 재생 위치를 바꿀 수 있습니다.
 5. **×**를 눌러 종료합니다. 설정은 컴퓨터에 저장됩니다.
 
-한국어 곡도 LRCLIB에 일치하는 가사와 시간 정보가 있으면 표시됩니다. 곡에 따라 가사가 없거나 시간이 어긋날 수 있습니다. 전체 화면 앱은 가사 창을 가릴 수 있습니다. 현재 버전은 Ubuntu용입니다. 안드로이드 버전은 아직 없습니다.
+한국어 곡도 LRCLIB에 일치하는 가사와 시간 정보가 있으면 표시됩니다. 곡에 따라 가사가 없거나 시간이 어긋날 수 있습니다. 전체 화면 앱은 가사 창을 가릴 수 있습니다. 컴퓨터 버전은 Ubuntu용입니다. 안드로이드 버전은 아래를 참고하세요.
 
 ### 개인정보
 
@@ -92,3 +92,105 @@ If LRCLIB cannot provide synced lyrics, the app can use lyrics that the Spotify 
 LRCLIB에서 동기화된 가사를 찾지 못하면 Spotify가 직접 불러온 가사를 보조로 사용할 수 있습니다. Ubuntu에서 Spotify를 완전히 종료한 다음 앱의 설정에서 **Spotify 가사 연결 실행**을 누르세요. Snap과 일반 패키지 실행 경로를 감지합니다. 다른 설치 방식은 검증하지 않았습니다. 노래를 재생하면서 Spotify의 가사 창을 열고 유지하세요. 연결할 때 이미 열려 있는 가사도 확인합니다. 가사는 곡 ID로 구분하며 메모리에만 보관합니다. 비공식 방식이라 Spotify 업데이트 후 작동하지 않을 수 있습니다. 업데이트한 뒤에는 `./setup.sh`를 다시 실행해 필요한 라이브러리를 설치하세요.
 
 **보안:** 이 모드에서는 Spotify의 디버그 인터페이스가 `127.0.0.1:19222`에서 열립니다. 이 컴퓨터의 다른 프로세스가 Spotify 세션을 제어할 가능성이 있습니다. 인터페이스를 닫으려면 Spotify를 완전히 종료한 뒤 평소 방식으로 다시 실행하세요. 이 주소는 다른 컴퓨터에서 직접 접근할 수 없습니다.
+
+## Android · 안드로이드
+
+### English
+
+The Android app shows a floating lyrics panel above other apps while Spotify plays on the phone. It follows the current line in real time and uses the same design as the desktop version.
+
+**Tested device**
+
+| | |
+|---|---|
+| Phone | Samsung Galaxy S25 Ultra (SM-S938N) |
+| OS | Android 17 (API 37), One UI 9.0 |
+| CPU | arm64-v8a |
+| Spotify | 9.1.94 |
+
+The app targets Android 8.0 (API 26) or later. It has only been tested on the device above. Other phones and Android versions may behave differently.
+
+**Install**
+
+1. Download `lyrics-float-android.apk` from [Releases](https://github.com/taehyeon03/lyrics-float/releases).
+2. Open the file on the phone and allow installation from that source when Android asks. The APK is a debug build signed with a development key, so Play Protect may show a warning.
+3. Open **가사 플로팅** (Lyrics Float).
+4. Select **알림 접근** (notification access) and turn it on for 가사 플로팅. If Android says the setting is restricted, open the app's info page, select ⋮ → **Allow restricted settings**, and try again.
+5. Select **다른 앱 위에 표시** (display over other apps) and allow it.
+6. Play a song in Spotify, then select **가사 창 띄우기** (show lyrics panel).
+
+**Using the panel**
+
+- Drag the top of the panel to move it. Drag the bottom-right corner to change its width.
+- Use the timeline to see and change the playback position. Use the buttons for previous, play/pause, and next.
+- Select ⚙ to change opacity, text size, and lyric color. You can also turn the wave, the timeline, the playback buttons, and NetEase lookup on or off.
+- Select × to close the panel.
+
+**How lyrics are found**
+
+The app reads the title, artist, album, duration, and position of the Spotify track from Android's media session. Notification access is needed only for this; the app does not read other notifications. It looks up time-synced lyrics on NetEase Cloud Music first and then on LRCLIB. For Korean songs, Chinese translations that NetEase adds to each line are removed. Turn off **NetEase 가사 먼저 찾기** to use LRCLIB only. The app does not read Spotify's own lyrics.
+
+**Privacy**
+
+Track metadata is sent to NetEase and, when needed, LRCLIB. Settings are stored only on the phone. The wave is decorative and does not record or analyze audio. No account or password is required.
+
+**Build from source**
+
+Install the Android SDK (API 36) and a JDK 17 or later, then run:
+
+```bash
+cd android
+./gradlew assembleDebug
+```
+
+The APK is written to `android/app/build/outputs/apk/debug/app-debug.apk`.
+
+### 한국어
+
+안드로이드 앱은 휴대폰에서 Spotify를 들을 때 다른 앱 위에 가사 창을 띄웁니다. 현재 부르는 줄을 실시간으로 따라가며, 컴퓨터 버전과 같은 디자인을 사용합니다.
+
+**테스트한 기기**
+
+| | |
+|---|---|
+| 휴대폰 | Samsung Galaxy S25 Ultra (SM-S938N) |
+| 운영체제 | Android 17 (API 37), One UI 9.0 |
+| CPU | arm64-v8a |
+| Spotify | 9.1.94 |
+
+Android 8.0(API 26) 이상을 대상으로 합니다. 위 기기에서만 확인했습니다. 다른 휴대폰이나 Android 버전에서는 다르게 동작할 수 있습니다.
+
+**설치 방법**
+
+1. [Releases](https://github.com/taehyeon03/lyrics-float/releases)에서 `lyrics-float-android.apk`를 내려받습니다.
+2. 휴대폰에서 파일을 열고, Android가 물으면 해당 앱의 설치를 허용합니다. 개발용 키로 서명한 디버그 빌드라서 Play 프로텍트 경고가 나올 수 있습니다.
+3. **가사 플로팅** 앱을 엽니다.
+4. **알림 접근**을 눌러 가사 플로팅을 켭니다. "제한된 설정"이라는 안내가 나오면 앱 정보 화면에서 ⋮ → **제한된 설정 허용**을 누른 뒤 다시 시도합니다.
+5. **다른 앱 위에 표시**를 눌러 허용합니다.
+6. Spotify에서 노래를 재생하고 **가사 창 띄우기**를 누릅니다.
+
+**가사 창 사용법**
+
+- 창 윗부분을 끌어서 옮깁니다. 오른쪽 아래 모서리를 끌어서 너비를 바꿉니다.
+- 타임라인에서 재생 위치를 보고 바꿀 수 있습니다. 버튼으로 이전 곡, 재생·일시 정지, 다음 곡을 조작합니다.
+- ⚙를 눌러 투명도, 글자 크기, 가사 색을 바꿉니다. 물결, 타임라인, 재생 버튼, NetEase 검색도 각각 켜고 끌 수 있습니다.
+- ×를 눌러 창을 닫습니다.
+
+**가사를 찾는 방식**
+
+Android의 미디어 세션에서 Spotify 곡의 제목, 가수, 앨범, 길이, 재생 위치를 읽습니다. 알림 접근 권한은 이 정보를 읽는 데만 쓰며, 다른 알림은 읽지 않습니다. 시간 정보가 있는 가사를 NetEase Cloud Music에서 먼저 찾고, 없으면 LRCLIB에서 찾습니다. 한국어 곡이면 NetEase가 줄마다 붙여 둔 중국어 번역을 지우고 보여 줍니다. **NetEase 가사 먼저 찾기**를 끄면 LRCLIB만 사용합니다. Spotify 자체 가사를 읽지는 않습니다.
+
+**개인정보**
+
+곡 정보가 NetEase로, 필요하면 LRCLIB로 전송됩니다. 설정은 휴대폰에만 저장됩니다. 물결은 장식이며 오디오를 녹음하거나 분석하지 않습니다. 계정이나 비밀번호가 필요하지 않습니다.
+
+**직접 빌드하기**
+
+Android SDK(API 36)와 JDK 17 이상을 설치한 뒤 실행합니다.
+
+```bash
+cd android
+./gradlew assembleDebug
+```
+
+APK는 `android/app/build/outputs/apk/debug/app-debug.apk`에 만들어집니다.

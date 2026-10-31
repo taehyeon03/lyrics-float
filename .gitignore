@@ -1,3 +1,9 @@
 .venv/
 __pycache__/
 *.py[cod]
+
+# Android build outputs and machine-specific configuration
+android/.gradle/
+android/**/build/
+android/local.properties
+*.apk
