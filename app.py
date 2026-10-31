@@ -1,4 +1,4 @@
-import asyncio, bisect, json, re, sys, time, urllib.parse, urllib.request, urllib.error, difflib
+import asyncio, bisect, json, re, sys, time, urllib.parse, urllib.request, urllib.error, difflib, logging
 from pathlib import Path
 from PyQt6.QtCore import Qt, QTimer, QObject, pyqtSignal, QEvent
 from PyQt6.QtGui import QColor, QFont
@@ -270,12 +270,14 @@ class Window(QWidget):
         def fetch():
             try:
                 synced,plain,instrumental=get_lyrics(t);self.bridge.lyrics.emit(t['id'],synced,plain,instrumental)
-            except Exception:
+            except Exception as exc:
+                logging.warning('Lyrics lookup failed (%s)',type(exc).__name__)
                 self.bridge.lyrics.emit(t['id'],None,None,'temporary_error')
         threading.Thread(target=fetch,daemon=True).start()
     def lyrics_done(self,track_id,synced,plain,instrumental):
         if not self.track or self.track['id']!=track_id:return
         self.lines=parse_lrc(synced);self.plain=plain
+        logging.warning('Lyrics result: %d timed lines, plain=%s, service_error=%s',len(self.lines),bool(plain),instrumental=='temporary_error')
         if instrumental == 'temporary_error':
             self.current.setText('가사 서비스에 연결할 수 없습니다')
             self.next.setText('잠시 후 다시 시도합니다')
