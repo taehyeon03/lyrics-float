@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import QWidget
 
 class MusicBars(QWidget):
     def __init__(self):
-        super().__init__();self.setFixedHeight(33)
+        super().__init__();self.setFixedHeight(46)
         self.wave_enabled=False;self.timeline_enabled=False;self.playing=False;self.progress=0.0;self.phase=0.0;self.last_tick=time.monotonic()
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.timer=QTimer(self);self.timer.setInterval(40);self.timer.timeout.connect(self.tick)
