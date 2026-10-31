@@ -1,15 +1,17 @@
 """Decorative waves for the playback timeline; no audio capture is used."""
 import math
 import time
-from PyQt6.QtCore import Qt, QRectF, QTimer
+from PyQt6.QtCore import Qt, QRectF, QTimer, pyqtSignal
 from PyQt6.QtGui import QColor, QLinearGradient, QPainter, QPainterPath, QPen
 from PyQt6.QtWidgets import QWidget
 
 class MusicBars(QWidget):
+    seek_requested=pyqtSignal(float)
+    seek_preview=pyqtSignal(float)
     def __init__(self):
         super().__init__();self.setFixedHeight(46)
-        self.wave_enabled=False;self.timeline_enabled=False;self.playing=False;self.progress=0.0;self.phase=0.0;self.last_tick=time.monotonic()
-        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.wave_enabled=False;self.timeline_enabled=False;self.can_seek=False;self.dragging=False;self.playing=False;self.progress=0.0;self.phase=0.0;self.last_tick=time.monotonic()
+        self.setMouseTracking(True);self.setToolTip("타임라인을 눌러 재생 위치를 이동합니다")
         self.timer=QTimer(self);self.timer.setInterval(40);self.timer.timeout.connect(self.tick)
     def tick(self):
         now=time.monotonic();self.phase+=(now-self.last_tick)*2.0;self.last_tick=now;self.update()
@@ -24,9 +26,26 @@ class MusicBars(QWidget):
     def set_playing(self,playing):
         self.playing=playing;self.sync_timer()
     def set_progress(self,value):
-        self.progress=max(0,min(1,value));self.update()
+        if not self.dragging:self.progress=max(0,min(1,value));self.update()
     def set_modes(self,wave,timeline):
-        self.wave_enabled=wave;self.timeline_enabled=timeline;self.sync_timer();self.update()
+        self.wave_enabled=wave;self.timeline_enabled=timeline;self.set_seekable(self.can_seek);self.sync_timer();self.update()
+    def set_seekable(self,can_seek):
+        self.can_seek=can_seek
+        self.setCursor(Qt.CursorShape.PointingHandCursor if can_seek and self.timeline_enabled else Qt.CursorShape.ArrowCursor)
+    def fraction_at(self,x):
+        return max(0.0,min(1.0,(x-4)/max(1,self.width()-8)))
+    def mousePressEvent(self,event):
+        if event.button()==Qt.MouseButton.LeftButton and self.timeline_enabled and self.can_seek:
+            self.dragging=True;self.progress=self.fraction_at(event.position().x());self.seek_preview.emit(self.progress);self.update();event.accept()
+        else:event.ignore()
+    def mouseMoveEvent(self,event):
+        if self.dragging:
+            self.progress=self.fraction_at(event.position().x());self.seek_preview.emit(self.progress);self.update();event.accept()
+        else:event.ignore()
+    def mouseReleaseEvent(self,event):
+        if self.dragging and event.button()==Qt.MouseButton.LeftButton:
+            self.progress=self.fraction_at(event.position().x());self.dragging=False;self.seek_requested.emit(self.progress);self.update();event.accept()
+        else:event.ignore()
     def paintEvent(self,event):
         painter=QPainter(self);painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         width=max(0,self.width()-8);start=4;baseline=self.height()-6;played=width*self.progress

@@ -32,7 +32,7 @@ Setup creates a user-local application shortcut. Search for **Lyrics Float** in 
 1. Open Spotify and play a song.
 2. Drag the panel to move it. Drag an edge or corner to resize it. The panel can shrink to 240 × 110 pixels.
 3. Select **고정** to keep the window above ordinary windows.
-4. Select **⚙** for settings. **배경** adjusts background opacity. **글자 색** changes the current line's color. **배경 색** changes the background color. **글꼴** chooses the font. **가 −** and **가 +** change the text size. Enable **움직이는 물결** to show a decorative wave. Enable **노래 타임라인 표시** for playback progress and **재생 제어 버튼 표시** for previous, play/pause, and next controls. The progress bar is display-only.
+4. Select **⚙** for settings. **배경** adjusts background opacity. **글자 색** changes the current line's color. **배경 색** changes the background color. **글꼴** chooses the font. **가 −** and **가 +** change the text size. Enable **움직이는 물결** to show a decorative wave. Enable **노래 타임라인 표시** for playback progress and **재생 제어 버튼 표시** for previous, play/pause, and next controls. Click or drag the timeline to seek when Spotify allows it.
 5. Select **×** to close the app. Settings are saved locally.
 
 Lyrics depend on LRCLIB coverage. Korean lyrics work when the service has a matching record with timestamps. Matching and timing can be inaccurate. Fullscreen applications may cover the window. This version has been developed for Ubuntu; Android is not yet supported.
@@ -68,7 +68,7 @@ cd lyrics-float
 1. Spotify에서 노래를 재생합니다.
 2. 창을 끌어서 위치를 옮깁니다. 창의 가장자리나 모서리를 끌어서 크기를 바꿉니다. 최소 크기는 240 × 110픽셀입니다.
 3. **고정**을 선택하면 일반 창 위에 표시됩니다.
-4. **⚙**를 눌러 설정을 엽니다. **배경**으로 투명도를 바꿉니다. **글자 색**으로 현재 가사의 색을 바꿉니다. **배경 색**으로 배경의 색을 바꿉니다. **글꼴**로 글꼴을 선택합니다. **가 −**, **가 +**로 글자 크기를 바꿉니다. **움직이는 물결**을 켜면 부드럽게 움직이는 장식이 나타납니다. **노래 타임라인 표시**와 **재생 제어 버튼 표시**는 각각 켜고 끌 수 있습니다. 재생 제어 버튼을 켜면 이전 곡, 재생·일시 정지, 다음 곡 버튼이 함께 표시됩니다. 타임라인은 현재 위치를 표시하며 이동 기능은 없습니다.
+4. **⚙**를 눌러 설정을 엽니다. **배경**으로 투명도를 바꿉니다. **글자 색**으로 현재 가사의 색을 바꿉니다. **배경 색**으로 배경의 색을 바꿉니다. **글꼴**로 글꼴을 선택합니다. **가 −**, **가 +**로 글자 크기를 바꿉니다. **움직이는 물결**을 켜면 부드럽게 움직이는 장식이 나타납니다. **노래 타임라인 표시**와 **재생 제어 버튼 표시**는 각각 켜고 끌 수 있습니다. 재생 제어 버튼을 켜면 이전 곡, 재생·일시 정지, 다음 곡 버튼이 함께 표시됩니다. Spotify가 이동을 허용하는 곡에서는 타임라인을 누르거나 끌어서 재생 위치를 바꿀 수 있습니다.
 5. **×**를 눌러 종료합니다. 설정은 컴퓨터에 저장됩니다.
 
 한국어 곡도 LRCLIB에 일치하는 가사와 시간 정보가 있으면 표시됩니다. 곡에 따라 가사가 없거나 시간이 어긋날 수 있습니다. 전체 화면 앱은 가사 창을 가릴 수 있습니다. 현재 버전은 Ubuntu용입니다. 안드로이드 버전은 아직 없습니다.

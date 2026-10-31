@@ -28,7 +28,7 @@ async def read_player():
         reply=await bus.call(Message(destination=services[0],path='/org/mpris/MediaPlayer2',interface='org.freedesktop.DBus.Properties',member='GetAll',signature='s',body=['org.mpris.MediaPlayer2.Player']))
         if reply.message_type==MessageType.ERROR: raise RuntimeError(reply.error_name)
         d={k:v.value for k,v in reply.body[0].items()}; m={k:v.value for k,v in d.get('Metadata',{}).items()}
-        return {'id':str(m.get('mpris:trackid','')), 'title':m.get('xesam:title',''), 'artist':', '.join(m.get('xesam:artist',[])), 'album':m.get('xesam:album',''), 'duration':m.get('mpris:length',0)/1000000, 'position':d.get('Position',0)/1000000, 'playing':d.get('PlaybackStatus')=='Playing', 'can_next':d.get('CanGoNext',False), 'can_previous':d.get('CanGoPrevious',False), 'can_play':d.get('CanPlay',False), 'can_pause':d.get('CanPause',False)}
+        return {'id':str(m.get('mpris:trackid','')), 'title':m.get('xesam:title',''), 'artist':', '.join(m.get('xesam:artist',[])), 'album':m.get('xesam:album',''), 'duration':m.get('mpris:length',0)/1000000, 'position':d.get('Position',0)/1000000, 'playing':d.get('PlaybackStatus')=='Playing', 'can_seek':d.get('CanSeek',False), 'can_next':d.get('CanGoNext',False), 'can_previous':d.get('CanGoPrevious',False), 'can_play':d.get('CanPlay',False), 'can_pause':d.get('CanPause',False)}
     finally: bus.disconnect()
 
 async def player_command(command):
@@ -40,6 +40,16 @@ async def player_command(command):
         if not services: raise RuntimeError('Spotify에 연결할 수 없습니다')
         reply=await bus.call(Message(destination=services[0],path='/org/mpris/MediaPlayer2',interface='org.mpris.MediaPlayer2.Player',member=command))
         if reply.message_type==MessageType.ERROR:raise RuntimeError('Spotify에서 재생을 제어할 수 없습니다')
+    finally:bus.disconnect()
+
+async def seek_player(track_id,position):
+    bus=await MessageBus().connect()
+    try:
+        names=await bus.call(Message(destination='org.freedesktop.DBus',path='/org/freedesktop/DBus',interface='org.freedesktop.DBus',member='ListNames'))
+        services=[n for n in names.body[0] if n.startswith('org.mpris.MediaPlayer2.spotify')]
+        if not services:raise RuntimeError('Spotify에 연결할 수 없습니다')
+        reply=await bus.call(Message(destination=services[0],path='/org/mpris/MediaPlayer2',interface='org.mpris.MediaPlayer2.Player',member='SetPosition',signature='ox',body=[track_id,int(max(0,position)*1000000)]))
+        if reply.message_type==MessageType.ERROR:raise RuntimeError('Spotify에서 재생 위치를 이동할 수 없습니다')
     finally:bus.disconnect()
 
 def format_time(seconds):
@@ -135,7 +145,7 @@ class Window(QWidget):
         self.bars_status=QLabel('');self.bars_status.setWordWrap(True);bottom.addWidget(self.bars_status);bottom.addStretch()
         done=QPushButton('설정 닫기');done.clicked.connect(self.open_settings);bottom.addWidget(done)
         self.settings_button.clicked.connect(self.open_settings)
-        self.bars=MusicBars()
+        self.bars=MusicBars();self.bars.seek_requested.connect(self.seek_to_fraction);self.bars.seek_preview.connect(self.preview_seek)
         self.bars_check.toggled.connect(self.toggle_bars)
         self.timeline=QWidget(); timeline_layout=QHBoxLayout(self.timeline);timeline_layout.setContentsMargins(0,0,0,0);timeline_layout.setSpacing(7)
         self.elapsed=QLabel('0:00');self.elapsed.setStyleSheet('font-size:10px;color:#bcb6c0');timeline_layout.addWidget(self.elapsed)
@@ -179,6 +189,17 @@ class Window(QWidget):
         import threading
         def worker():
             try:asyncio.run(player_command(command))
+            except Exception as exc:self.bridge.command_error.emit(str(exc))
+        threading.Thread(target=worker,daemon=True).start()
+    def preview_seek(self,fraction):
+        if self.track:self.elapsed.setText(format_time(fraction*self.track.get('duration',0)))
+    def seek_to_fraction(self,fraction):
+        if not self.track or not self.track.get('can_seek') or not self.track.get('duration'):return
+        import threading
+        track_id=self.track['id'];position=min(fraction*self.track['duration'],max(0,self.track['duration']-.1))
+        self.base=position;self.at=time.monotonic();self.render_lyrics()
+        def worker():
+            try:asyncio.run(seek_player(track_id,position))
             except Exception as exc:self.bridge.command_error.emit(str(exc))
         threading.Thread(target=worker,daemon=True).start()
     def update_background(self,n):
@@ -267,9 +288,9 @@ class Window(QWidget):
     def player_done(self,t):
         self.busy=False
         if not t or not t['title']:
-            self.track=None; self.playing=False; self.bars.set_playing(False);self.previous_button.setEnabled(False);self.play_button.setEnabled(False);self.skip_button.setEnabled(False); self.lines=[]; self.current.setText('음악을 기다리는 중');self.previous.setText('');self.next.setText('');self.title.setText('Spotify 데스크톱 앱에서 음악을 재생하세요');return
+            self.track=None; self.playing=False; self.bars.set_playing(False);self.bars.set_seekable(False);self.previous_button.setEnabled(False);self.play_button.setEnabled(False);self.skip_button.setEnabled(False); self.lines=[]; self.current.setText('음악을 기다리는 중');self.previous.setText('');self.next.setText('');self.title.setText('Spotify 데스크톱 앱에서 음악을 재생하세요');return
         changed=not self.track or (t['id'],t['title'],t['artist']) != (self.track['id'],self.track['title'],self.track['artist'])
-        self.skip_button.setEnabled(t.get('can_next',False));self.previous_button.setEnabled(t.get('can_previous',False));self.play_button.setEnabled(t.get('can_pause',False) if t['playing'] else t.get('can_play',False));self.play_button.setText('⏸' if t['playing'] else '▶');self.play_button.setToolTip('일시 정지' if t['playing'] else '재생');self.track=t; self.base=t['position'];self.at=time.monotonic();self.playing=t['playing'];self.bars.set_playing(self.playing); self.title.setText(t['title']+'  ·  '+t['artist']+('  ⏸' if not self.playing else ''))
+        self.bars.set_seekable(bool(t.get('can_seek',False) and t.get('duration',0)));self.skip_button.setEnabled(t.get('can_next',False));self.previous_button.setEnabled(t.get('can_previous',False));self.play_button.setEnabled(t.get('can_pause',False) if t['playing'] else t.get('can_play',False));self.play_button.setText('⏸' if t['playing'] else '▶');self.play_button.setToolTip('일시 정지' if t['playing'] else '재생');self.track=t; self.base=t['position'];self.at=time.monotonic();self.playing=t['playing'];self.bars.set_playing(self.playing); self.title.setText(t['title']+'  ·  '+t['artist']+('  ⏸' if not self.playing else ''))
         if changed:
             self.lines=[];self.plain=None;self.current.setText('가사를 찾고 있어요…');self.previous.setText('');self.next.setText('')
             self.fetch_lyrics(t)
@@ -311,7 +332,8 @@ class Window(QWidget):
         pos=self.base+(time.monotonic()-self.at if self.playing else 0)
         duration=self.track.get('duration',0) if self.track else 0
         pos=max(0,min(pos,duration)) if duration else 0
-        self.elapsed.setText(format_time(pos));self.duration.setText(format_time(duration));self.bars.set_progress(pos/duration if duration else 0)
+        if not self.bars.dragging:self.elapsed.setText(format_time(pos))
+        self.duration.setText(format_time(duration));self.bars.set_progress(pos/duration if duration else 0)
         if not self.lines:return
         i=bisect.bisect_right([x[0] for x in self.lines],pos)-1
         self.previous.setText(self.lines[i-1][1] if i>0 else '')
