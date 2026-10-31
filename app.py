@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLa
 from dbus_fast.aio import MessageBus
 from dbus_fast import Message, MessageType
 from visualizer import MusicBars
+from spotify_bridge import SpotifyBridge
 
 CONFIG = Path.home()/'.config'/'lyrics-float'/'settings.json'
 
@@ -85,7 +86,7 @@ class Window(QWidget):
         super().__init__(); self.setWindowTitle('가사 플로팅'); self.resize(560,230); self.setMinimumSize(240,110)
         self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.loading_settings=True;self.track=None; self.lines=[]; self.base=0; self.at=time.monotonic(); self.playing=False; self.busy=False; self.plain=None; self.bridge=Bridge(); self.fontsize=23; self.lyric_color="#ff75b4"; self.background_color="#1c1d21"; self.font_family="sans-serif"
+        self.loading_settings=True;self.track=None; self.lines=[]; self.base=0; self.at=time.monotonic(); self.playing=False; self.busy=False; self.plain=None; self.bridge=Bridge();self.spotify_lyrics_cache={};self.spotify_bridge=SpotifyBridge();self.spotify_bridge.lyrics.connect(self.spotify_lyrics_received);self.spotify_bridge.start(); self.fontsize=23; self.lyric_color="#ff75b4"; self.background_color="#1c1d21"; self.font_family="sans-serif"
         self.bridge.player.connect(self.player_done); self.bridge.lyrics.connect(self.lyrics_done); self.bridge.error.connect(self.player_error); self.bridge.command_error.connect(self.player_error)
         self.setStyleSheet("""QLabel {background: transparent; color:#f4f2f4; font-family:sans-serif}
             QLabel#title {color:#b6b1b7;font-size:11px} QLabel#previous, QLabel#next {color:#99949b}
@@ -272,6 +273,13 @@ class Window(QWidget):
         if changed:
             self.lines=[];self.plain=None;self.current.setText('가사를 찾고 있어요…');self.previous.setText('');self.next.setText('')
             self.fetch_lyrics(t)
+    def spotify_lyrics_received(self,track_id,lines):
+        logging.warning('Spotify bridge received %d timed lines',len(lines))
+        self.spotify_lyrics_cache[track_id]=lines
+        if len(self.spotify_lyrics_cache)>10:self.spotify_lyrics_cache.pop(next(iter(self.spotify_lyrics_cache)))
+        if self.track and self.track['id'].rsplit('/',1)[-1]==track_id and not self.lines:
+            self.lines=lines;self.title.setToolTip('가사 출처: Spotify');self.render_lyrics()
+            logging.warning('Spotify fallback: %d timed lines',len(lines))
     def fetch_lyrics(self,t):
         import threading
         def fetch():
@@ -285,6 +293,9 @@ class Window(QWidget):
         if not self.track or self.track['id']!=track_id:return
         self.lines=parse_lrc(synced);self.plain=plain
         logging.warning('Lyrics result: %d timed lines, plain=%s, service_error=%s',len(self.lines),bool(plain),instrumental=='temporary_error')
+        cached=self.spotify_lyrics_cache.get(track_id.rsplit('/',1)[-1])
+        if not self.lines and cached:
+            self.lines=cached;self.title.setToolTip('가사 출처: Spotify');self.render_lyrics();return
         if instrumental == 'temporary_error':
             self.current.setText('가사 서비스에 연결할 수 없습니다')
             self.next.setText('잠시 후 다시 시도합니다')
@@ -313,7 +324,7 @@ class Window(QWidget):
     def save_settings(self):
         CONFIG.parent.mkdir(parents=True,exist_ok=True);CONFIG.write_text(json.dumps({'width':self.width(),'height':self.height(),'opacity':self.opacity.value(),'pin':self.pin.isChecked(),'font':self.fontsize,'lyric_color':self.lyric_color,'background_color':self.background_color,'music_bars':self.bars_check.isChecked(),'timeline':self.timeline_check.isChecked(),'next_button':self.next_check.isChecked(),'font_family':self.font_family},ensure_ascii=False))
     def closeEvent(self,event):
-        self.bars.timer.stop();self.save_settings();super().closeEvent(event)
+        self.spotify_bridge.stop();self.bars.timer.stop();self.save_settings();super().closeEvent(event)
 
 if __name__=='__main__':
     app=QApplication(sys.argv); w=Window(); w.show();sys.exit(app.exec())
