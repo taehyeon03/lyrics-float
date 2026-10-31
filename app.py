@@ -1,8 +1,8 @@
 import asyncio, bisect, json, re, sys, time, urllib.parse, urllib.request, urllib.error, difflib
 from pathlib import Path
-from PyQt6.QtCore import Qt, QTimer, QObject, pyqtSignal
+from PyQt6.QtCore import Qt, QTimer, QObject, pyqtSignal, QEvent
 from PyQt6.QtGui import QColor, QFont
-from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QSlider, QCheckBox, QFrame, QSizeGrip, QColorDialog, QFontDialog
+from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QSlider, QCheckBox, QFrame, QSizeGrip, QColorDialog, QFontDialog, QSizePolicy, QGridLayout
 from dbus_fast.aio import MessageBus
 from dbus_fast import Message, MessageType
 
@@ -58,7 +58,7 @@ class Bridge(QObject):
 
 class Window(QWidget):
     def __init__(self):
-        super().__init__(); self.setWindowTitle('가사 플로팅'); self.resize(560,230); self.setMinimumSize(320,180)
+        super().__init__(); self.setWindowTitle('가사 플로팅'); self.resize(560,230); self.setMinimumSize(240,110)
         self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.track=None; self.lines=[]; self.base=0; self.at=time.monotonic(); self.playing=False; self.busy=False; self.plain=None; self.bridge=Bridge(); self.fontsize=23; self.lyric_color="#ff75b4"; self.background_color="#1c1d21"; self.font_family="sans-serif"
@@ -79,23 +79,50 @@ class Window(QWidget):
         layout.addStretch(); self.previous=QLabel('');self.previous.setObjectName('previous');self.previous.setAlignment(Qt.AlignmentFlag.AlignCenter);self.previous.setWordWrap(True);layout.addWidget(self.previous)
         self.current=QLabel('음악을 기다리는 중');self.current.setObjectName('lyric');self.current.setWordWrap(True);self.current.setAlignment(Qt.AlignmentFlag.AlignCenter);layout.addWidget(self.current)
         self.next=QLabel('');self.next.setObjectName('next');self.next.setWordWrap(True);self.next.setAlignment(Qt.AlignmentFlag.AlignCenter);layout.addWidget(self.next);layout.addStretch()
-        self.options=QWidget();self.options.setStyleSheet('background:transparent');bottom=QHBoxLayout(self.options);bottom.setContentsMargins(0,0,0,0)
-        bottom.addWidget(QLabel('배경'));self.opacity=QSlider(Qt.Orientation.Horizontal);self.opacity.setRange(20,100);self.opacity.setValue(85);self.opacity.valueChanged.connect(self.update_background);bottom.addWidget(self.opacity,1)
-        self.color_button=QPushButton('글자 색');self.color_button.clicked.connect(self.choose_color);bottom.addWidget(self.color_button)
-        self.bg_button=QPushButton('배경 색');self.bg_button.clicked.connect(self.choose_background);bottom.addWidget(self.bg_button)
-        self.font_button=QPushButton('글꼴');self.font_button.clicked.connect(self.choose_font);bottom.addWidget(self.font_button)
-        self.smaller=QPushButton('가 −');self.larger=QPushButton('가 +');self.smaller.clicked.connect(lambda:self.font_adjust(-2));self.larger.clicked.connect(lambda:self.font_adjust(2));bottom.addWidget(self.smaller);bottom.addWidget(self.larger);layout.addWidget(self.options)
+        self.options=QWidget();self.options.setStyleSheet('background:transparent');bottom=QGridLayout(self.options);bottom.setContentsMargins(0,0,0,0);bottom.setSpacing(4)
+        bottom.addWidget(QLabel('배경'),0,0);self.opacity=QSlider(Qt.Orientation.Horizontal);self.opacity.setRange(20,100);self.opacity.setValue(85);self.opacity.valueChanged.connect(self.update_background);bottom.addWidget(self.opacity,0,1,1,3)
+        self.color_button=QPushButton('글자 색');self.color_button.clicked.connect(self.choose_color);bottom.addWidget(self.color_button,1,0)
+        self.bg_button=QPushButton('배경 색');self.bg_button.clicked.connect(self.choose_background);bottom.addWidget(self.bg_button,1,1)
+        self.font_button=QPushButton('글꼴');self.font_button.clicked.connect(self.choose_font);bottom.addWidget(self.font_button,1,2)
+        self.smaller=QPushButton('가 −');self.larger=QPushButton('가 +');self.smaller.clicked.connect(lambda:self.font_adjust(-2));self.larger.clicked.connect(lambda:self.font_adjust(2));bottom.addWidget(self.smaller,1,3);bottom.addWidget(self.larger,1,4);layout.addWidget(self.options)
         self.options.hide();self.settings_button.clicked.connect(lambda:self.options.setVisible(not self.options.isVisible()))
         griprow=QHBoxLayout();griprow.addStretch();grip=QSizeGrip(self);grip.setStyleSheet('background:transparent;width:14px;height:14px');griprow.addWidget(grip);layout.addLayout(griprow)
+        for label in (self.title,self.previous,self.current,self.next):
+            label.setSizePolicy(QSizePolicy.Policy.Ignored,QSizePolicy.Policy.Ignored if label is not self.title else QSizePolicy.Policy.Preferred)
+        for widget in (self.panel,self.title,self.previous,self.current,self.next): widget.installEventFilter(self)
+        self.save_timer=QTimer(self);self.save_timer.setSingleShot(True);self.save_timer.setInterval(800);self.save_timer.timeout.connect(self.save_settings)
         self.load_settings();self.apply_typography();self.update_background(self.opacity.value());self.pin_change(self.pin.isChecked())
         self.timer=QTimer(self); self.timer.timeout.connect(self.render_lyrics); self.timer.start(100)
         self.poll=QTimer(self); self.poll.timeout.connect(self.poll_player); self.poll.start(2000); self.poll_player()
     def update_background(self,n):
         color=QColor(self.background_color)
         self.panel.setStyleSheet(f"QFrame#panel {{background:rgba({color.red()}, {color.green()}, {color.blue()}, {round(n*2.55)});border-radius:20px;}}")
+    def resize_edges(self, pos):
+        margin=10; edges=Qt.Edge(0)
+        if pos.x()<margin: edges|=Qt.Edge.LeftEdge
+        elif pos.x()>=self.width()-margin: edges|=Qt.Edge.RightEdge
+        if pos.y()<margin: edges|=Qt.Edge.TopEdge
+        elif pos.y()>=self.height()-margin: edges|=Qt.Edge.BottomEdge
+        return edges
+    def eventFilter(self,watched,event):
+        if event.type()==QEvent.Type.MouseButtonPress and event.button()==Qt.MouseButton.LeftButton:
+            pos=watched.mapTo(self,event.position().toPoint())
+            edges=self.resize_edges(pos)
+            if edges and self.windowHandle():
+                self.windowHandle().startSystemResize(edges)
+                return True
+        return super().eventFilter(watched,event)
     def mousePressEvent(self,event):
         if event.button()==Qt.MouseButton.LeftButton:
-            self.windowHandle().startSystemMove()
+            edges=self.resize_edges(event.position().toPoint())
+            if edges:self.windowHandle().startSystemResize(edges)
+            else:self.windowHandle().startSystemMove()
+    def resizeEvent(self,event):
+        super().resizeEvent(event)
+        if hasattr(self,'previous'):
+            self.previous.setVisible(self.height()>=170)
+            self.next.setVisible(self.height()>=145)
+        if hasattr(self,'save_timer'): self.save_timer.start()
     def apply_typography(self):
         for label in (self.previous, self.current, self.next):
             font=QFont(self.font_family)

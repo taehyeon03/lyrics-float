@@ -27,7 +27,7 @@ Run the commands from this repository's directory. The launcher runs the app in 
 ### Controls
 
 1. Open Spotify and play a song.
-2. Drag the panel to move it. Drag the bottom-right corner to resize it.
+2. Drag the panel to move it. Drag an edge or corner to resize it. The panel can shrink to 240 × 110 pixels.
 3. Select **고정** to keep the window above ordinary windows.
 4. Select **⚙** for settings. **배경** adjusts background opacity. **글자 색** changes the current line's color. **배경 색** changes the background color. **글꼴** chooses the font. **가 −** and **가 +** change the text size.
 5. Select **×** to close the app. Settings are saved locally.
@@ -59,7 +59,7 @@ sudo apt install python3-venv libxcb-cursor0
 ### 사용 방법
 
 1. Spotify에서 노래를 재생합니다.
-2. 창을 끌어서 위치를 옮깁니다. 오른쪽 아래 모서리를 끌어서 크기를 바꿉니다.
+2. 창을 끌어서 위치를 옮깁니다. 창의 가장자리나 모서리를 끌어서 크기를 바꿉니다. 최소 크기는 240 × 110픽셀입니다.
 3. **고정**을 선택하면 일반 창 위에 표시됩니다.
 4. **⚙**를 눌러 설정을 엽니다. **배경**으로 투명도를 바꿉니다. **글자 색**으로 현재 가사의 색을 바꿉니다. **배경 색**으로 배경의 색을 바꿉니다. **글꼴**로 글꼴을 선택합니다. **가 −**, **가 +**로 글자 크기를 바꿉니다.
 5. **×**를 눌러 종료합니다. 설정은 컴퓨터에 저장됩니다.
