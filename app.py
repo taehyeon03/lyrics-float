@@ -38,7 +38,7 @@ def get_lyrics(track):
     try:
         data=request('get',params)
     except urllib.error.HTTPError as error:
-        if error.code != 404: raise
+        if error.code not in (404, 429, 500, 502, 503, 504): raise
         candidates=request('search',{'track_name':track['title'],'artist_name':track['artist'].split(',')[0]})
         def normalized(value): return re.sub(r'[^\w]+','',value.casefold())
         def score(item):
@@ -89,7 +89,9 @@ class Window(QWidget):
         griprow=QHBoxLayout();griprow.addStretch();grip=QSizeGrip(self);grip.setStyleSheet('background:transparent;width:14px;height:14px');griprow.addWidget(grip);layout.addLayout(griprow)
         for label in (self.title,self.previous,self.current,self.next):
             label.setSizePolicy(QSizePolicy.Policy.Ignored,QSizePolicy.Policy.Ignored if label is not self.title else QSizePolicy.Policy.Preferred)
-        for widget in (self.panel,self.title,self.previous,self.current,self.next): widget.installEventFilter(self)
+        self.setMouseTracking(True)
+        for widget in (self.panel,self.title,self.previous,self.current,self.next):
+            widget.setMouseTracking(True);widget.installEventFilter(self)
         self.save_timer=QTimer(self);self.save_timer.setSingleShot(True);self.save_timer.setInterval(800);self.save_timer.timeout.connect(self.save_settings)
         self.load_settings();self.apply_typography();self.update_background(self.opacity.value());self.pin_change(self.pin.isChecked())
         self.timer=QTimer(self); self.timer.timeout.connect(self.render_lyrics); self.timer.start(100)
@@ -104,14 +106,32 @@ class Window(QWidget):
         if pos.y()<margin: edges|=Qt.Edge.TopEdge
         elif pos.y()>=self.height()-margin: edges|=Qt.Edge.BottomEdge
         return edges
+    def update_resize_cursor(self,widget,pos):
+        edges=self.resize_edges(pos)
+        horizontal=bool(edges & (Qt.Edge.LeftEdge | Qt.Edge.RightEdge))
+        vertical=bool(edges & (Qt.Edge.TopEdge | Qt.Edge.BottomEdge))
+        if horizontal and vertical:
+            diagonal=(bool(edges & Qt.Edge.LeftEdge) == bool(edges & Qt.Edge.TopEdge))
+            cursor=Qt.CursorShape.SizeFDiagCursor if diagonal else Qt.CursorShape.SizeBDiagCursor
+        elif horizontal: cursor=Qt.CursorShape.SizeHorCursor
+        elif vertical: cursor=Qt.CursorShape.SizeVerCursor
+        else:
+            widget.unsetCursor();return
+        widget.setCursor(cursor)
     def eventFilter(self,watched,event):
-        if event.type()==QEvent.Type.MouseButtonPress and event.button()==Qt.MouseButton.LeftButton:
+        if event.type()==QEvent.Type.MouseMove:
+            self.update_resize_cursor(watched,watched.mapTo(self,event.position().toPoint()))
+        elif event.type()==QEvent.Type.Leave:
+            watched.unsetCursor()
+        elif event.type()==QEvent.Type.MouseButtonPress and event.button()==Qt.MouseButton.LeftButton:
             pos=watched.mapTo(self,event.position().toPoint())
             edges=self.resize_edges(pos)
             if edges and self.windowHandle():
                 self.windowHandle().startSystemResize(edges)
                 return True
         return super().eventFilter(watched,event)
+    def mouseMoveEvent(self,event):
+        self.update_resize_cursor(self,event.position().toPoint())
     def mousePressEvent(self,event):
         if event.button()==Qt.MouseButton.LeftButton:
             edges=self.resize_edges(event.position().toPoint())
@@ -164,18 +184,29 @@ class Window(QWidget):
         self.track=t; self.base=t['position'];self.at=time.monotonic();self.playing=t['playing']; self.title.setText(t['title']+'  ·  '+t['artist']+('  ⏸' if not self.playing else ''))
         if changed:
             self.lines=[];self.plain=None;self.current.setText('가사를 찾고 있어요…');self.previous.setText('');self.next.setText('')
-            import threading
-            def fetch():
-                try:
-                    synced,plain,instrumental=get_lyrics(t);self.bridge.lyrics.emit(t['id'],synced,plain,instrumental)
-                except Exception: self.bridge.lyrics.emit(t['id'],None,None,False)
-            threading.Thread(target=fetch,daemon=True).start()
+            self.fetch_lyrics(t)
+    def fetch_lyrics(self,t):
+        import threading
+        def fetch():
+            try:
+                synced,plain,instrumental=get_lyrics(t);self.bridge.lyrics.emit(t['id'],synced,plain,instrumental)
+            except Exception:
+                self.bridge.lyrics.emit(t['id'],None,None,'temporary_error')
+        threading.Thread(target=fetch,daemon=True).start()
     def lyrics_done(self,track_id,synced,plain,instrumental):
         if not self.track or self.track['id']!=track_id:return
         self.lines=parse_lrc(synced);self.plain=plain
-        if not self.lines:
+        if instrumental == 'temporary_error':
+            self.current.setText('가사 서비스에 연결할 수 없습니다')
+            self.next.setText('잠시 후 다시 시도합니다')
+            QTimer.singleShot(15000,lambda:self.retry_lyrics(track_id))
+        elif not self.lines:
             self.current.setText('연주곡입니다' if instrumental else ('동기화된 가사가 없습니다' if plain else '가사를 찾지 못했습니다'))
             self.next.setText('가사 출처: LRCLIB')
+    def retry_lyrics(self,track_id):
+        if self.track and self.track['id']==track_id and not self.lines:
+            self.current.setText('가사를 다시 찾고 있어요…')
+            self.fetch_lyrics(self.track.copy())
     def render_lyrics(self):
         if not self.lines:return
         pos=self.base+(time.monotonic()-self.at if self.playing else 0)
