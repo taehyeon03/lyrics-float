@@ -95,11 +95,9 @@ class Window(QWidget):
         layout.addStretch(); self.previous=QLabel('');self.previous.setObjectName('previous');self.previous.setAlignment(Qt.AlignmentFlag.AlignCenter);self.previous.setWordWrap(True);layout.addWidget(self.previous)
         self.current=QLabel('음악을 기다리는 중');self.current.setObjectName('lyric');self.current.setWordWrap(True);self.current.setAlignment(Qt.AlignmentFlag.AlignCenter);layout.addWidget(self.current)
         self.next=QLabel('');self.next.setObjectName('next');self.next.setWordWrap(True);self.next.setAlignment(Qt.AlignmentFlag.AlignCenter);layout.addWidget(self.next);layout.addStretch()
-        self.settings=QDialog(self);self.settings.setWindowTitle('가사 플로팅 설정');self.settings.resize(410,440)
-        self.settings.setStyleSheet("""QDialog,QScrollArea,QWidget#settingsContent {background:#24242b;color:#f5f4f7}
-            QLabel,QCheckBox {color:#f5f4f7;background:transparent} QPushButton {background:#45434d;color:#fff;padding:8px;border-radius:6px}
-        """)
-        settings_layout=QVBoxLayout(self.settings);scroll=QScrollArea();scroll.setWidgetResizable(True);settings_layout.addWidget(scroll)
+        self.settings_scroll=QScrollArea();self.settings_scroll.setWidgetResizable(True);self.settings_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.settings_scroll.setStyleSheet("QScrollArea {background:transparent;border:0} QWidget#settingsContent {background:transparent} QLabel,QCheckBox {color:#f5f4f7;background:transparent} QPushButton {background:#45434d;color:#fff;padding:8px;border-radius:6px}")
+        layout.addWidget(self.settings_scroll,1);self.settings_scroll.hide();scroll=self.settings_scroll
         self.options=QWidget();self.options.setObjectName('settingsContent');scroll.setWidget(self.options);bottom=QVBoxLayout(self.options);bottom.setSpacing(10)
         bottom.addWidget(QLabel('배경 투명도'))
         self.opacity=QSlider(Qt.Orientation.Horizontal);self.opacity.setRange(20,100);self.opacity.setValue(85);self.opacity.valueChanged.connect(self.update_background);bottom.addWidget(self.opacity)
@@ -111,7 +109,7 @@ class Window(QWidget):
         self.timeline_check=QCheckBox('노래 타임라인 표시');bottom.addWidget(self.timeline_check)
         self.next_check=QCheckBox('다음 곡 버튼 표시');bottom.addWidget(self.next_check)
         self.bars_status=QLabel('');self.bars_status.setWordWrap(True);bottom.addWidget(self.bars_status);bottom.addStretch()
-        done=QPushButton('닫기');done.clicked.connect(self.settings.close);settings_layout.addWidget(done)
+        done=QPushButton('설정 닫기');done.clicked.connect(self.open_settings);bottom.addWidget(done)
         self.settings_button.clicked.connect(self.open_settings)
         self.bars=MusicBars();self.bars.hide();layout.addWidget(self.bars)
         self.audio=AudioWorker();self.audio.levels.connect(self.audio_levels);self.audio.failed.connect(self.audio_failed)
@@ -134,9 +132,16 @@ class Window(QWidget):
         self.timer=QTimer(self); self.timer.timeout.connect(self.render_lyrics); self.timer.start(100)
         self.poll=QTimer(self); self.poll.timeout.connect(self.poll_player); self.poll.start(2000); self.poll_player()
     def open_settings(self):
-        self.settings.show();self.settings.raise_();self.settings.activateWindow()
+        showing=not self.settings_scroll.isVisible()
+        self.settings_scroll.setVisible(showing)
+        self.current.setVisible(not showing)
+        self.previous.setVisible(not showing and self.height()>=170)
+        self.next.setVisible(not showing and self.height()>=145)
+        self.bars.setVisible(not showing and self.bars_check.isChecked())
+        self.timeline.setVisible(not showing and self.timeline_check.isChecked())
+        if showing:self.settings_scroll.verticalScrollBar().setValue(0)
     def toggle_timeline(self,on):
-        self.timeline.setVisible(on)
+        self.timeline.setVisible(on and not self.settings_scroll.isVisible())
         if hasattr(self,'save_timer') and not self.loading_settings:self.save_settings()
     def toggle_next(self,on):
         self.skip_button.setVisible(on)
@@ -151,7 +156,7 @@ class Window(QWidget):
         color=QColor(self.background_color)
         self.panel.setStyleSheet(f"QFrame#panel {{background:rgba({color.red()}, {color.green()}, {color.blue()}, {round(n*2.55)});border-radius:20px;}}")
     def toggle_bars(self,on):
-        self.bars.setVisible(on);self.bars_status.setText('')
+        self.bars.setVisible(on and not self.settings_scroll.isVisible());self.bars_status.setText('')
         if on:self.audio.start()
         else:self.audio.stop();self.bars.clear()
         if hasattr(self,'save_timer') and not self.loading_settings:self.save_settings()
@@ -201,8 +206,8 @@ class Window(QWidget):
     def resizeEvent(self,event):
         super().resizeEvent(event)
         if hasattr(self,'previous'):
-            self.previous.setVisible(self.height()>=170)
-            self.next.setVisible(self.height()>=145)
+            self.previous.setVisible(not self.settings_scroll.isVisible() and self.height()>=170)
+            self.next.setVisible(not self.settings_scroll.isVisible() and self.height()>=145)
         if hasattr(self,'save_timer'): self.save_timer.start()
     def apply_typography(self):
         for label in (self.previous, self.current, self.next):
