@@ -36,7 +36,7 @@ public final class OverlayService extends Service {
     @Override public void onCreate(){super.onCreate();
         NotificationManager nm=getSystemService(NotificationManager.class);nm.createNotificationChannel(new NotificationChannel("overlay","가사 창",NotificationManager.IMPORTANCE_LOW));
         PendingIntent pi=PendingIntent.getActivity(this,0,new Intent(this,MainActivity.class),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
-        Notification notification=new Notification.Builder(this,"overlay").setSmallIcon(android.R.drawable.ic_media_play).setContentTitle("가사 플로팅 실행 중").setContentText("눌러서 설정을 엽니다").setContentIntent(pi).setOngoing(true).build();startForeground(101,notification);
+        Notification notification=new Notification.Builder(this,"overlay").setSmallIcon(R.drawable.ic_notification).setContentTitle("가사 플로팅 실행 중").setContentText("눌러서 설정을 엽니다").setContentIntent(pi).setOngoing(true).build();startForeground(101,notification);
         if(!Settings.canDrawOverlays(this)){stopSelf();return;}
         prefs=getSharedPreferences("display",MODE_PRIVATE);windows=(WindowManager)getSystemService(WINDOW_SERVICE);buildPanel();IntentFilter filter=new IntentFilter(ACTION_REFRESH);
         if(Build.VERSION.SDK_INT>=33)registerReceiver(refresh,filter,Context.RECEIVER_NOT_EXPORTED);else registerReceiver(refresh,filter);main.post(tick);
