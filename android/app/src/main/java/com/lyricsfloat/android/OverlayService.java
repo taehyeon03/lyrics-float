@@ -46,13 +46,19 @@ public final class OverlayService extends Service {
     private void refreshAll(){applyAppearance();sendBroadcast(new Intent(ACTION_REFRESH).setPackage(getPackageName()));}
     private void buildPanel(){
         root=new FrameLayout(this){
+            final int slop=ViewConfiguration.get(OverlayService.this).getScaledTouchSlop();float downX,downY,anchorX,anchorY,ratioX,ratioY;int startX,startY;boolean dragging,pinched,inSettings;
             final ScaleGestureDetector pinch=new ScaleGestureDetector(OverlayService.this,new ScaleGestureDetector.SimpleOnScaleGestureListener(){float scale;int startWidth,startFont;
-                @Override public boolean onScaleBegin(ScaleGestureDetector d){scale=1;startWidth=params.width;startFont=prefs.getInt("font",22);return true;}
-                @Override public boolean onScale(ScaleGestureDetector d){scale*=d.getScaleFactor();int screen=getResources().getDisplayMetrics().widthPixels;params.width=Math.max(dp(240),Math.min(screen,(int)(startWidth*scale)));keepOnScreen();windows.updateViewLayout(root,params);current.setTextSize(Math.max(15,Math.min(34,Math.round(startFont*scale))));return true;}
-                @Override public void onScaleEnd(ScaleGestureDetector d){prefs.edit().putInt("width",Math.round(params.width*100f/getResources().getDisplayMetrics().widthPixels)).putInt("font",Math.max(15,Math.min(34,Math.round(startFont*scale)))).putInt("x",params.x).apply();applyAppearance();}});
-            @Override public boolean dispatchTouchEvent(MotionEvent e){pinch.onTouchEvent(e);return super.dispatchTouchEvent(e);}
-            @Override public boolean onInterceptTouchEvent(MotionEvent e){return e.getPointerCount()>1||super.onInterceptTouchEvent(e);}
-            @Override public boolean onTouchEvent(MotionEvent e){return true;}};panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setPadding(dp(16),dp(10),dp(12),dp(12));root.addView(panel,new FrameLayout.LayoutParams(-1,-2));
+                @Override public boolean onScaleBegin(ScaleGestureDetector d){pinched=true;dragging=false;scale=1;startWidth=params.width;startFont=prefs.getInt("font",22);anchorX=params.x+d.getFocusX();anchorY=params.y+d.getFocusY();ratioX=d.getFocusX()/Math.max(1,getWidth());ratioY=d.getFocusY()/Math.max(1,getHeight());return true;}
+                @Override public boolean onScale(ScaleGestureDetector d){scale*=d.getScaleFactor();int screen=getResources().getDisplayMetrics().widthPixels;params.width=Math.max(dp(240),Math.min(screen,(int)(startWidth*scale)));params.x=Math.round(anchorX-ratioX*params.width);keepOnScreen();windows.updateViewLayout(root,params);current.setTextSize(Math.max(15,Math.min(34,Math.round(startFont*scale))));return true;}
+                @Override public void onScaleEnd(ScaleGestureDetector d){prefs.edit().putInt("width",Math.round(params.width*100f/getResources().getDisplayMetrics().widthPixels)).putInt("font",Math.max(15,Math.min(34,Math.round(startFont*scale)))).putInt("x",params.x).putInt("y",params.y).apply();applyAppearance();}});
+            {addOnLayoutChangeListener((v,l,t,r,b,ol,ot,or,ob)->{if(pinch.isInProgress()&&b-t!=ob-ot){params.y=Math.round(anchorY-ratioY*(b-t));keepOnScreen();windows.updateViewLayout(this,params);}});}
+            private boolean moved(MotionEvent e){return Math.hypot(e.getRawX()-downX,e.getRawY()-downY)>slop;}
+            @Override public boolean dispatchTouchEvent(MotionEvent e){pinch.onTouchEvent(e);if(e.getActionMasked()==MotionEvent.ACTION_DOWN){downX=e.getRawX();downY=e.getRawY();startX=params.x;startY=params.y;dragging=false;pinched=false;inSettings=settingsBox.getVisibility()==View.VISIBLE&&e.getY()>=panel.getTop()+settingsBox.getTop();}return super.dispatchTouchEvent(e);}
+            @Override public boolean onInterceptTouchEvent(MotionEvent e){if(e.getPointerCount()>1)return true;if(e.getActionMasked()==MotionEvent.ACTION_MOVE&&!pinched&&!inSettings&&moved(e)){dragging=true;return true;}return false;}
+            @Override public boolean onTouchEvent(MotionEvent e){switch(e.getActionMasked()){
+                case MotionEvent.ACTION_MOVE:if(!pinched&&!inSettings&&e.getPointerCount()==1&&(dragging||moved(e))){dragging=true;params.x=startX+(int)(e.getRawX()-downX);params.y=startY+(int)(e.getRawY()-downY);keepOnScreen();windows.updateViewLayout(this,params);}break;
+                case MotionEvent.ACTION_UP:if(dragging)prefs.edit().putInt("x",params.x).putInt("y",params.y).apply();dragging=false;break;}
+                return true;}};panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setPadding(dp(16),dp(10),dp(12),dp(12));root.addView(panel,new FrameLayout.LayoutParams(-1,-2));
         LinearLayout header=new LinearLayout(this);header.setGravity(Gravity.CENTER_VERTICAL);title=label("Spotify를 기다리는 중",11,0xffb6b1b7);title.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);title.setSingleLine(true);title.setEllipsize(TextUtils.TruncateAt.END);header.addView(title,new LinearLayout.LayoutParams(0,dp(32),1));
         icon(header,IconButton.SETTINGS,30,8,v->toggleSettings());icon(header,IconButton.CLOSE,30,8,v->stopSelf());panel.addView(header);
         lyricsBox=new LinearLayout(this);lyricsBox.setOrientation(LinearLayout.VERTICAL);lyricsBox.setGravity(Gravity.CENTER);panel.addView(lyricsBox,lp(-1,-2,4));
@@ -68,7 +74,6 @@ public final class OverlayService extends Service {
         icon(controls,IconButton.NEXT,38,18,v->{if(controller!=null)controller.getTransportControls().skipToNext();});lyricsBox.addView(controls,lp(-1,-2,4));
         buildSettings();
         params=new WindowManager.LayoutParams(-1,-2,WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,PixelFormat.TRANSLUCENT);params.gravity=Gravity.TOP|Gravity.START;params.x=prefs.getInt("x",dp(12));params.y=prefs.getInt("y",dp(110));
-        header.setOnTouchListener(new View.OnTouchListener(){float sx,sy;int ox,oy;public boolean onTouch(View v,MotionEvent e){switch(e.getActionMasked()){case MotionEvent.ACTION_DOWN:sx=e.getRawX();sy=e.getRawY();ox=params.x;oy=params.y;return true;case MotionEvent.ACTION_MOVE:params.x=ox+(int)(e.getRawX()-sx);params.y=oy+(int)(e.getRawY()-sy);keepOnScreen();windows.updateViewLayout(root,params);return true;case MotionEvent.ACTION_UP:prefs.edit().putInt("x",params.x).putInt("y",params.y).apply();v.performClick();return true;default:return false;}}});
         applyAppearance();try{windows.addView(root,params);}catch(RuntimeException e){stopSelf();}
     }
     private GradientDrawable round(int color,float radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));return d;}
