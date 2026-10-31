@@ -124,7 +124,7 @@ The app targets Android 8.0 (API 26) or later. It has only been tested on the de
 
 - Drag anywhere on the panel to move it. Pinch with two fingers to resize the panel and the lyric text together around the point between your fingers.
 - Use the timeline to see and change the playback position. Use the buttons for previous, play/pause, and next.
-- Select ⚙ to change opacity, text size, and lyric color. You can also turn the wave, the timeline, the playback buttons, and Spotify lyrics on or off.
+- Select ⚙ to change opacity, text size, lyric color, and background color. Pick a preset or use the rainbow slider for any color. You can also turn the wave, the timeline, the playback buttons, and Spotify lyrics on or off.
 - Select × to close the panel.
 
 **How lyrics are found**
@@ -183,7 +183,7 @@ Android 8.0(API 26) 이상을 대상으로 합니다. 위 기기에서만 확인
 
 - 창의 아무 곳이나 끌어서 옮깁니다. 두 손가락으로 벌리거나 오므리면 두 손가락 사이를 중심으로 창과 가사 글자 크기가 함께 바뀝니다.
 - 타임라인에서 재생 위치를 보고 바꿀 수 있습니다. 버튼으로 이전 곡, 재생·일시 정지, 다음 곡을 조작합니다.
-- ⚙를 눌러 투명도, 글자 크기, 가사 색을 바꿉니다. 물결, 타임라인, 재생 버튼, Spotify 가사도 각각 켜고 끌 수 있습니다.
+- ⚙를 눌러 투명도, 글자 크기, 가사 색, 배경 색을 바꿉니다. 준비된 색을 고르거나 무지개 슬라이더로 원하는 색을 고를 수 있습니다. 물결, 타임라인, 재생 버튼, Spotify 가사도 각각 켜고 끌 수 있습니다.
 - ×를 눌러 창을 닫습니다.
 
 **가사를 찾는 방식**

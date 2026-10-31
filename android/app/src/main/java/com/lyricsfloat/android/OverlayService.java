@@ -24,10 +24,11 @@ import java.util.regex.*;
 
 public final class OverlayService extends Service {
     static final String ACTION_REFRESH="com.lyricsfloat.android.REFRESH";
-    static final int[] LYRIC_COLORS={0xffff75b4,0xfff4f2f4,0xff8fceff,0xffc7a6ff,0xffffd989};
+    static final int[] LYRIC_COLORS={0xffff75b4,0xfff4f2f4,0xff8fceff,0xffc7a6ff,0xffffd989,0xff7fe0c0,0xffff8a7a,0xffffb26b,0xffc8f07a,0xffffb3d1,0xff6fe3ff,0xffb6b1b7};
+    static final int[] BG_COLORS={0xff1c1d21,0xff000000,0xff141a2e,0xff241a33,0xff2e1520,0xff13251f,0xff2a2622,0xff1f2b33,0xff3a3d46,0xfff4f2f4};
     private final Handler main=new Handler(Looper.getMainLooper());
     private final ExecutorService io=Executors.newSingleThreadExecutor();
-    private WindowManager windows;private WindowManager.LayoutParams params;private FrameLayout root;private LinearLayout panel,lyricsBox,timelineRow,controls,swatches;private ScrollView settingsBox;
+    private WindowManager windows;private WindowManager.LayoutParams params;private FrameLayout root;private LinearLayout panel,lyricsBox,timelineRow,controls,lyricSwatches,bgSwatches;private ScrollView settingsBox;
     private TextView title,previous,current,next,elapsed,total,fontValue;private IconButton play;private WaveView wave;private SharedPreferences prefs;
     private MediaController controller;private boolean lookupInFlight=false;private String trackKey="",source="",message="Spotify에서 음악을 재생하세요";private long duration=0,retryAt=0;private int generation=0;private List<Line> lines=Collections.emptyList();
     private final BroadcastReceiver refresh=new BroadcastReceiver(){@Override public void onReceive(Context c,Intent i){applyAppearance();}};
@@ -90,21 +91,32 @@ public final class OverlayService extends Service {
         opacity.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar b,int v,boolean user){if(user){prefs.edit().putInt("opacity",v+25).apply();refreshAll();}}public void onStartTrackingTouch(SeekBar b){}public void onStopTrackingTouch(SeekBar b){}});
         LinearLayout size=new LinearLayout(this);size.setGravity(Gravity.CENTER_VERTICAL);TextView sizeName=label("글자 크기",12,0xffbcb6c0);sizeName.setGravity(Gravity.START);size.addView(sizeName,new LinearLayout.LayoutParams(0,-2,1));
         icon(size,IconButton.MINUS,32,0,v->fontStep(-2));fontValue=label("",14,0xfff5f4f7);size.addView(fontValue,new LinearLayout.LayoutParams(dp(40),-2));icon(size,IconButton.PLUS,32,0,v->fontStep(2));box.addView(size,lp(-1,-2,14));
-        section(box,"현재 가사 색");swatches=new LinearLayout(this);swatches.setGravity(Gravity.CENTER_VERTICAL);box.addView(swatches,lp(-1,-2,8));
-        for(int color:LYRIC_COLORS){View s=new View(this);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(30),dp(30));p.rightMargin=dp(12);swatches.addView(s,p);s.setTag(color);s.setOnClickListener(v->{prefs.edit().putInt("lyric_color",(int)v.getTag()).apply();refreshAll();});}
+        lyricSwatches=palette(box,"현재 가사 색","lyric_color",LYRIC_COLORS,.55f,1f);bgSwatches=palette(box,"배경 색","bg_color",BG_COLORS,.45f,.2f);
         section(box,"표시");toggleRow(box,"움직이는 물결","wave",true);toggleRow(box,"노래 타임라인","timeline",true);toggleRow(box,"재생 제어 버튼","controls",true);toggleRow(box,"Spotify 가사 먼저 찾기","spotify",true);
         TextView note=label("Spotify에 로그인하면 Spotify 가사를 먼저 쓰고, 없으면 LRCLIB에서 찾습니다. 끄면 LRCLIB만 사용합니다.",11,0xff99949b);note.setGravity(Gravity.START);box.addView(note,lp(-1,-2,8));
         LinearLayout buttons=new LinearLayout(this);box.addView(buttons,lp(-1,dp(42),16));
         TextView more=label("권한 · 앱 설정",13,0xfff5f4f7);more.setBackground(round(0xff45434d,12));buttons.addView(more,new LinearLayout.LayoutParams(0,-1,1));more.setOnClickListener(v->startActivity(new Intent(this,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)));
         TextView done=label("설정 닫기",13,0xff1c1d21);done.setBackground(round(0xfff5f4f7,12));LinearLayout.LayoutParams dl=new LinearLayout.LayoutParams(0,-1,1);dl.leftMargin=dp(8);buttons.addView(done,dl);done.setOnClickListener(v->toggleSettings());
     }
+    /** A scrollable row of preset swatches plus a hue slider for any other color; saturation and brightness suit the target. */
+    private LinearLayout palette(LinearLayout box,String title,String key,int[] colors,float saturation,float value){
+        section(box,title);HorizontalScrollView scroll=new HorizontalScrollView(this);scroll.setHorizontalScrollBarEnabled(false);LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(2),dp(2),dp(2),dp(2));scroll.addView(row);box.addView(scroll,lp(-1,-2,8));
+        for(int color:colors){View v=new View(this);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(30),dp(30));p.rightMargin=dp(10);row.addView(v,p);v.setTag(color);v.setOnClickListener(x->{prefs.edit().putInt(key,(int)x.getTag()).apply();refreshAll();});}
+        int[] hues=new int[13];for(int i=0;i<hues.length;i++)hues[i]=Color.HSVToColor(new float[]{i*30f,saturation,value});
+        GradientDrawable track=new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,hues);track.setCornerRadius(dp(5));
+        SeekBar hue=new SeekBar(this);hue.setMax(359);hue.setProgressDrawable(track);hue.setThumbTintList(ColorStateList.valueOf(0xfff5f4f7));if(Build.VERSION.SDK_INT>=29){hue.setMinHeight(dp(10));hue.setMaxHeight(dp(10));}
+        float[] hsv=new float[3];Color.colorToHSV(prefs.getInt(key,colors[0]),hsv);hue.setProgress((int)hsv[0]);box.addView(hue,lp(-1,dp(30),8));
+        hue.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar b,int h,boolean user){if(user){prefs.edit().putInt(key,Color.HSVToColor(new float[]{h,saturation,value})).apply();refreshAll();}}public void onStartTrackingTouch(SeekBar b){}public void onStopTrackingTouch(SeekBar b){}});
+        return row;
+    }
+    private void ring(LinearLayout row,int selected){for(int i=0;i<row.getChildCount();i++){View v=row.getChildAt(i);GradientDrawable d=new GradientDrawable();d.setShape(GradientDrawable.OVAL);d.setColor((int)v.getTag());d.setStroke(dp((int)v.getTag()==selected?3:1),(int)v.getTag()==selected?0xffff75b4:0x40ffffff);v.setBackground(d);}}
     private void fontStep(int delta){prefs.edit().putInt("font",Math.max(15,Math.min(34,prefs.getInt("font",22)+delta))).apply();refreshAll();}
     private void toggleSettings(){boolean open=settingsBox.getVisibility()!=View.VISIBLE;settingsBox.setVisibility(open?View.VISIBLE:View.GONE);lyricsBox.setVisibility(open?View.GONE:View.VISIBLE);
         if(open){int max=getResources().getDisplayMetrics().heightPixels/2;settingsBox.getLayoutParams().height=-2;settingsBox.measure(View.MeasureSpec.makeMeasureSpec(params.width>0?params.width:getResources().getDisplayMetrics().widthPixels,View.MeasureSpec.AT_MOST),View.MeasureSpec.UNSPECIFIED);if(settingsBox.getMeasuredHeight()>max)settingsBox.getLayoutParams().height=max;settingsBox.requestLayout();}
         wave.updatePlayback(false,0);}
-    private void applyAppearance(){if(root==null)return;int opacity=prefs.getInt("opacity",85),font=prefs.getInt("font",22),color=prefs.getInt("lyric_color",LYRIC_COLORS[0]);panel.setBackground(round(Color.argb(opacity*255/100,28,29,33),20));
+    private void applyAppearance(){if(root==null)return;int opacity=prefs.getInt("opacity",85),font=prefs.getInt("font",22),color=prefs.getInt("lyric_color",LYRIC_COLORS[0]);int bg=prefs.getInt("bg_color",BG_COLORS[0]);panel.setBackground(round(Color.argb(opacity*255/100,Color.red(bg),Color.green(bg),Color.blue(bg)),20));
         current.setTextSize(font);current.setTextColor(color);previous.setTextSize(Math.max(12,font*.58f));next.setTextSize(Math.max(12,font*.58f));if(fontValue!=null)fontValue.setText(String.valueOf(font));
-        for(int i=0;i<swatches.getChildCount();i++){View s=swatches.getChildAt(i);GradientDrawable d=new GradientDrawable();d.setShape(GradientDrawable.OVAL);d.setColor((int)s.getTag());if((int)s.getTag()==color)d.setStroke(dp(3),0xfff5f4f7);s.setBackground(d);}
+        ring(lyricSwatches,color);ring(bgSwatches,bg);
         timelineRow.setVisibility(prefs.getBoolean("timeline",true)?View.VISIBLE:View.GONE);controls.setVisibility(prefs.getBoolean("controls",true)?View.VISIBLE:View.GONE);wave.setWave(prefs.getBoolean("wave",true));
         int screen=getResources().getDisplayMetrics().widthPixels;params.width=Math.max(dp(240),Math.min(screen,screen*prefs.getInt("width",94)/100));keepOnScreen();if(root.isAttachedToWindow())try{windows.updateViewLayout(root,params);}catch(RuntimeException ignored){}}
     private void keepOnScreen(){android.util.DisplayMetrics m=getResources().getDisplayMetrics();params.x=Math.max(0,Math.min(m.widthPixels-params.width,params.x));params.y=Math.max(0,Math.min(m.heightPixels-dp(120),params.y));}
