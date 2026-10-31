@@ -4,8 +4,8 @@ import shutil
 import struct
 import subprocess
 import threading
-from PyQt6.QtCore import QObject, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QLinearGradient, QPainter
+from PyQt6.QtCore import QObject, Qt, pyqtSignal, QRectF
+from PyQt6.QtGui import QColor, QLinearGradient, QPainter, QPainterPath, QPen
 from PyQt6.QtWidgets import QWidget
 
 RATE = 16000
@@ -62,22 +62,41 @@ class AudioWorker(QObject):
         if process and process.poll() is None:process.terminate()
 
 class MusicBars(QWidget):
+    """Draw live audio as smooth waves above the played part of the timeline."""
     def __init__(self):
-        super().__init__();self.values=[0.0]*len(FREQUENCIES);self.setFixedHeight(32)
+        super().__init__();self.values=[0.0]*len(FREQUENCIES);self.setFixedHeight(33)
+        self.wave_enabled=False;self.timeline_enabled=False;self.progress=0.0
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
     def set_levels(self,levels):
-        self.values=[old*.55+new*.45 for old,new in zip(self.values,levels)];self.update()
+        self.values=[old*.65+new*.35 for old,new in zip(self.values,levels)];self.update()
     def clear(self):
         self.values=[0.0]*len(FREQUENCIES);self.update()
+    def set_progress(self,value):
+        self.progress=max(0,min(1,value));self.update()
+    def set_modes(self,wave,timeline):
+        self.wave_enabled=wave;self.timeline_enabled=timeline;self.update()
     def paintEvent(self,event):
         painter=QPainter(self);painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        gradient=QLinearGradient(0,0,self.width(),0)
-        for pos,color in [(0,'#79b8ff'),(.5,'#bb8cff'),(1,'#ff74b5')]:gradient.setColorAt(pos,QColor(color))
-        painter.setPen(Qt.PenStyle.NoPen);painter.setBrush(gradient)
-        count=max(24,min(80,self.width()//7));gap=3;bar=max(2,(self.width()-gap*(count-1))/count);total=count*bar+(count-1)*gap;left=(self.width()-total)/2
-        from PyQt6.QtCore import QRectF
-        for i in range(count):
-            location=i*(len(self.values)-1)/max(1,count-1);left_index=int(location);fraction=location-left_index
-            level=self.values[left_index]*(1-fraction)+self.values[min(left_index+1,len(self.values)-1)]*fraction
-            height=3+level*(self.height()-5)
-            painter.drawRoundedRect(QRectF(left+i*(bar+gap),self.height()-height,bar,height),bar/2,bar/2)
+        width=max(0,self.width()-8);start=4;baseline=self.height()-6;played=width*self.progress
+        if self.wave_enabled:
+            wave_width=played if self.timeline_enabled else width
+            energy=sum(self.values)/len(self.values)
+            if wave_width>1 and energy>0.001:
+                for layer in range(3):
+                    path=QPainterPath();path.moveTo(start,baseline)
+                    amplitude=min(1.0,energy*(1.3+layer*.35))*(self.height()-9)
+                    points=24
+                    for i in range(1,points):
+                        x=i/points;envelope=math.sin(math.pi*x)**1.1
+                        variation=.55+.35*math.sin(x*math.pi*(2+layer)+layer*1.6)
+                        height=amplitude*envelope*variation
+                        path.lineTo(start+wave_width*x,baseline-height)
+                    path.lineTo(start+wave_width,baseline);path.closeSubpath()
+                    gradient=QLinearGradient(start,0,start+wave_width,0)
+                    gradient.setColorAt(0,QColor(112,153,255,40+layer*18));gradient.setColorAt(.55,QColor(207,184,255,65+layer*20));gradient.setColorAt(1,QColor(255,232,249,100+layer*20))
+                    painter.setPen(Qt.PenStyle.NoPen);painter.setBrush(gradient);painter.drawPath(path)
+        if self.timeline_enabled:
+            painter.setPen(QPen(QColor('#696671'),4,Qt.PenStyle.SolidLine,Qt.PenCapStyle.RoundCap));painter.drawLine(int(start),baseline,int(start+width),baseline)
+            if played>0:
+                painter.setPen(QPen(QColor('#d9d7f8'),4,Qt.PenStyle.SolidLine,Qt.PenCapStyle.RoundCap));painter.drawLine(int(start),baseline,int(start+played),baseline)
+            painter.setPen(QPen(QColor('#ffffff'),2));painter.setBrush(QColor('#625578'));painter.drawEllipse(QRectF(start+played-4,baseline-4,8,8))

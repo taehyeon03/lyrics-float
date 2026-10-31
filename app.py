@@ -105,20 +105,18 @@ class Window(QWidget):
         self.bg_button=QPushButton('배경 색');self.bg_button.clicked.connect(self.choose_background);bottom.addWidget(self.bg_button)
         self.font_button=QPushButton('글꼴');self.font_button.clicked.connect(self.choose_font);bottom.addWidget(self.font_button)
         fontrow=QHBoxLayout();self.smaller=QPushButton('글자 작게 −');self.larger=QPushButton('글자 크게 +');self.smaller.clicked.connect(lambda:self.font_adjust(-2));self.larger.clicked.connect(lambda:self.font_adjust(2));fontrow.addWidget(self.smaller);fontrow.addWidget(self.larger);bottom.addLayout(fontrow)
-        self.bars_check=QCheckBox('소리에 반응하는 음악 바');self.bars_check.setToolTip('컴퓨터의 기본 출력 소리에 반응합니다');bottom.addWidget(self.bars_check)
+        self.bars_check=QCheckBox('소리에 반응하는 물결');self.bars_check.setToolTip('컴퓨터의 기본 출력 소리에 반응합니다');bottom.addWidget(self.bars_check)
         self.timeline_check=QCheckBox('노래 타임라인 표시');bottom.addWidget(self.timeline_check)
         self.next_check=QCheckBox('다음 곡 버튼 표시');bottom.addWidget(self.next_check)
         self.bars_status=QLabel('');self.bars_status.setWordWrap(True);bottom.addWidget(self.bars_status);bottom.addStretch()
         done=QPushButton('설정 닫기');done.clicked.connect(self.open_settings);bottom.addWidget(done)
         self.settings_button.clicked.connect(self.open_settings)
-        self.bars=MusicBars();self.bars.hide();layout.addWidget(self.bars)
+        self.bars=MusicBars()
         self.audio=AudioWorker();self.audio.levels.connect(self.audio_levels);self.audio.failed.connect(self.audio_failed)
         self.bars_check.toggled.connect(self.toggle_bars)
         self.timeline=QWidget(); timeline_layout=QHBoxLayout(self.timeline);timeline_layout.setContentsMargins(0,0,0,0);timeline_layout.setSpacing(7)
         self.elapsed=QLabel('0:00');self.elapsed.setStyleSheet('font-size:10px;color:#bcb6c0');timeline_layout.addWidget(self.elapsed)
-        self.progress=QProgressBar();self.progress.setRange(0,1000);self.progress.setValue(0);self.progress.setTextVisible(False);self.progress.setFixedHeight(5)
-        self.progress.setStyleSheet('QProgressBar {background:#53515a;border:0;border-radius:2px} QProgressBar::chunk {background:#fb80b8;border-radius:2px}')
-        timeline_layout.addWidget(self.progress,1);self.duration=QLabel('0:00');self.duration.setStyleSheet('font-size:10px;color:#bcb6c0');timeline_layout.addWidget(self.duration);layout.addWidget(self.timeline);self.timeline.hide()
+        timeline_layout.addWidget(self.bars,1);self.duration=QLabel('0:00');self.duration.setStyleSheet('font-size:10px;color:#bcb6c0');timeline_layout.addWidget(self.duration);layout.addWidget(self.timeline);self.timeline.hide()
         self.skip_button=QPushButton('다음 곡  ⏭');self.skip_button.setToolTip('Spotify에서 다음 곡 재생');self.skip_button.clicked.connect(self.skip_next);top.insertWidget(1,self.skip_button);self.skip_button.hide()
         self.timeline_check.toggled.connect(self.toggle_timeline);self.next_check.toggled.connect(self.toggle_next)
         griprow=QHBoxLayout();griprow.addStretch();grip=QSizeGrip(self);grip.setStyleSheet('background:transparent;width:14px;height:14px');griprow.addWidget(grip);layout.addLayout(griprow)
@@ -137,11 +135,15 @@ class Window(QWidget):
         self.current.setVisible(not showing)
         self.previous.setVisible(not showing and self.height()>=170)
         self.next.setVisible(not showing and self.height()>=145)
-        self.bars.setVisible(not showing and self.bars_check.isChecked())
-        self.timeline.setVisible(not showing and self.timeline_check.isChecked())
+        self.update_timeline_visibility()
         if showing:self.settings_scroll.verticalScrollBar().setValue(0)
+    def update_timeline_visibility(self):
+        wave=self.bars_check.isChecked();timeline=self.timeline_check.isChecked()
+        self.timeline.setVisible((wave or timeline) and not self.settings_scroll.isVisible())
+        self.elapsed.setVisible(timeline);self.duration.setVisible(timeline)
+        self.bars.set_modes(wave,timeline)
     def toggle_timeline(self,on):
-        self.timeline.setVisible(on and not self.settings_scroll.isVisible())
+        self.update_timeline_visibility()
         if hasattr(self,'save_timer') and not self.loading_settings:self.save_settings()
     def toggle_next(self,on):
         self.skip_button.setVisible(on)
@@ -156,7 +158,7 @@ class Window(QWidget):
         color=QColor(self.background_color)
         self.panel.setStyleSheet(f"QFrame#panel {{background:rgba({color.red()}, {color.green()}, {color.blue()}, {round(n*2.55)});border-radius:20px;}}")
     def toggle_bars(self,on):
-        self.bars.setVisible(on and not self.settings_scroll.isVisible());self.bars_status.setText('')
+        self.update_timeline_visibility();self.bars_status.setText('')
         if on:self.audio.start()
         else:self.audio.stop();self.bars.clear()
         if hasattr(self,'save_timer') and not self.loading_settings:self.save_settings()
@@ -277,7 +279,7 @@ class Window(QWidget):
         pos=self.base+(time.monotonic()-self.at if self.playing else 0)
         duration=self.track.get('duration',0) if self.track else 0
         pos=max(0,min(pos,duration)) if duration else 0
-        self.elapsed.setText(format_time(pos));self.duration.setText(format_time(duration));self.progress.setValue(round(1000*pos/duration) if duration else 0)
+        self.elapsed.setText(format_time(pos));self.duration.setText(format_time(duration));self.bars.set_progress(pos/duration if duration else 0)
         if not self.lines:return
         i=bisect.bisect_right([x[0] for x in self.lines],pos)-1
         self.previous.setText(self.lines[i-1][1] if i>0 else '')
