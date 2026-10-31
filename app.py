@@ -1,4 +1,4 @@
-import asyncio, bisect, json, re, sys, time, urllib.parse, urllib.request, urllib.error, difflib, logging
+import asyncio, bisect, json, re, sys, time, urllib.parse, urllib.request, urllib.error, difflib, logging, subprocess
 from pathlib import Path
 from PyQt6.QtCore import Qt, QTimer, QObject, pyqtSignal, QEvent
 from PyQt6.QtGui import QColor, QFont
@@ -90,14 +90,15 @@ class Bridge(QObject):
     lyrics=pyqtSignal(str,object,object,object)
     error=pyqtSignal(str)
     command_error=pyqtSignal(str)
+    bridge_status=pyqtSignal(str)
 
 class Window(QWidget):
     def __init__(self):
         super().__init__(); self.setWindowTitle('가사 플로팅'); self.resize(560,230); self.setMinimumSize(240,110)
         self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.loading_settings=True;self.track=None; self.lines=[]; self.base=0; self.at=time.monotonic(); self.playing=False; self.busy=False; self.plain=None; self.bridge=Bridge();self.spotify_lyrics_cache={};self.spotify_bridge=SpotifyBridge();self.spotify_bridge.lyrics.connect(self.spotify_lyrics_received);self.spotify_bridge.start(); self.fontsize=23; self.lyric_color="#ff75b4"; self.background_color="#1c1d21"; self.font_family="sans-serif"
-        self.bridge.player.connect(self.player_done); self.bridge.lyrics.connect(self.lyrics_done); self.bridge.error.connect(self.player_error); self.bridge.command_error.connect(self.player_error)
+        self.loading_settings=True;self.track=None; self.lines=[]; self.base=0; self.at=time.monotonic(); self.playing=False; self.busy=False; self.plain=None; self.bridge=Bridge();self.spotify_lyrics_cache={};self.spotify_bridge=SpotifyBridge();self.spotify_bridge.lyrics.connect(self.spotify_lyrics_received);self.spotify_bridge.connected.connect(self.spotify_bridge_state); self.fontsize=23; self.lyric_color="#ff75b4"; self.background_color="#1c1d21"; self.font_family="sans-serif"
+        self.bridge.player.connect(self.player_done); self.bridge.lyrics.connect(self.lyrics_done); self.bridge.error.connect(self.player_error); self.bridge.command_error.connect(self.player_error);self.bridge.bridge_status.connect(self.show_bridge_status)
         self.setStyleSheet("""QLabel {background: transparent; color:#f4f2f4; font-family:sans-serif}
             QLabel#title {color:#b6b1b7;font-size:11px} QLabel#previous, QLabel#next {color:#99949b}
             QLabel#lyric {color:#ff75b4}
@@ -142,6 +143,9 @@ class Window(QWidget):
         self.bars_check=QCheckBox('움직이는 물결');self.bars_check.setToolTip('음악을 분석하지 않는 장식 효과입니다');bottom.addWidget(self.bars_check)
         self.timeline_check=QCheckBox('노래 타임라인 표시');bottom.addWidget(self.timeline_check)
         self.next_check=QCheckBox('재생 제어 버튼 표시');bottom.addWidget(self.next_check)
+        self.spotify_button=QPushButton('Spotify 가사 연결 실행');self.spotify_button.setToolTip('Spotify를 종료한 후 연결 모드로 실행합니다');self.spotify_button.clicked.connect(self.start_spotify_bridge);bottom.addWidget(self.spotify_button)
+        self.spotify_note=QLabel('연결 모드는 이 컴퓨터의 다른 프로그램도 접근할 수 있는 Spotify 디버그 포트를 엽니다.');self.spotify_note.setWordWrap(True);bottom.addWidget(self.spotify_note)
+        self.spotify_status=QLabel('');self.spotify_status.setWordWrap(True);bottom.addWidget(self.spotify_status)
         self.bars_status=QLabel('');self.bars_status.setWordWrap(True);bottom.addWidget(self.bars_status);bottom.addStretch()
         done=QPushButton('설정 닫기');done.clicked.connect(self.open_settings);bottom.addWidget(done)
         self.settings_button.clicked.connect(self.open_settings)
@@ -164,6 +168,7 @@ class Window(QWidget):
             widget.setMouseTracking(True);widget.installEventFilter(self)
         self.save_timer=QTimer(self);self.save_timer.setSingleShot(True);self.save_timer.setInterval(800);self.save_timer.timeout.connect(self.save_settings)
         self.load_settings();self.loading_settings=False;self.apply_typography();self.update_background(self.opacity.value());self.pin_change(self.pin.isChecked())
+        self.spotify_bridge.start()
         self.timer=QTimer(self); self.timer.timeout.connect(self.render_lyrics); self.timer.start(100)
         self.poll=QTimer(self); self.poll.timeout.connect(self.poll_player); self.poll.start(2000); self.poll_player()
     def open_settings(self):
@@ -185,6 +190,25 @@ class Window(QWidget):
     def toggle_next(self,on):
         self.controls.setVisible(on)
         if hasattr(self,'save_timer') and not self.loading_settings:self.save_settings()
+    def spotify_bridge_state(self,connected):
+        if connected:self.spotify_status.setText('Spotify 연결됨 · Spotify 가사 창을 열어 두세요')
+        else:self.spotify_status.setText('Spotify 연결되지 않음 · Spotify 종료 후 연결 실행을 누르세요')
+    def show_bridge_status(self,message):
+        self.spotify_status.setText(message)
+    def start_spotify_bridge(self):
+        import threading
+        self.spotify_status.setText('Spotify 연결 모드를 실행하고 있습니다…')
+        script=Path(__file__).resolve().parent/'spotify-bridge.sh'
+        def worker():
+            try:
+                result=subprocess.run([str(script)],capture_output=True,text=True,timeout=15)
+                if result.returncode:
+                    self.bridge.bridge_status.emit(result.stderr.strip() or 'Spotify를 실행하지 못했습니다.')
+                else:
+                    self.bridge.bridge_status.emit('Spotify에서 가사 창을 켜고 노래를 재생해 주세요.')
+            except (OSError,subprocess.SubprocessError):
+                self.bridge.bridge_status.emit('Spotify 연결을 시작하지 못했습니다.')
+        threading.Thread(target=worker,daemon=True).start()
     def send_command(self,command):
         import threading
         def worker():
@@ -292,10 +316,15 @@ class Window(QWidget):
         changed=not self.track or (t['id'],t['title'],t['artist']) != (self.track['id'],self.track['title'],self.track['artist'])
         self.bars.set_seekable(bool(t.get('can_seek',False) and t.get('duration',0)));self.skip_button.setEnabled(t.get('can_next',False));self.previous_button.setEnabled(t.get('can_previous',False));self.play_button.setEnabled(t.get('can_pause',False) if t['playing'] else t.get('can_play',False));self.play_button.setText('⏸' if t['playing'] else '▶');self.play_button.setToolTip('일시 정지' if t['playing'] else '재생');self.track=t; self.base=t['position'];self.at=time.monotonic();self.playing=t['playing'];self.bars.set_playing(self.playing); self.title.setText(t['title']+'  ·  '+t['artist']+('  ⏸' if not self.playing else ''))
         if changed:
-            self.lines=[];self.plain=None;self.current.setText('가사를 찾고 있어요…');self.previous.setText('');self.next.setText('')
+            cached=self.spotify_lyrics_cache.get(t['id'].rsplit('/',1)[-1])
+            self.lines=cached or [];self.plain=None;self.current.setText('가사를 찾고 있어요…');self.previous.setText('');self.next.setText('')
+            if cached:
+                self.title.setToolTip('가사 출처: Spotify');self.render_lyrics()
+                logging.warning('Spotify fallback: cached current track (%d timed lines)',len(cached))
             self.fetch_lyrics(t)
     def spotify_lyrics_received(self,track_id,lines):
-        logging.warning('Spotify bridge received %d timed lines',len(lines))
+        current_matches=bool(self.track and self.track['id'].rsplit('/',1)[-1]==track_id)
+        logging.warning('Spotify bridge received %d timed lines, current_match=%s',len(lines),current_matches)
         self.spotify_lyrics_cache[track_id]=lines
         if len(self.spotify_lyrics_cache)>10:self.spotify_lyrics_cache.pop(next(iter(self.spotify_lyrics_cache)))
         if self.track and self.track['id'].rsplit('/',1)[-1]==track_id and not self.lines:
@@ -316,7 +345,7 @@ class Window(QWidget):
         logging.warning('Lyrics result: %d timed lines, plain=%s, service_error=%s',len(self.lines),bool(plain),instrumental=='temporary_error')
         cached=self.spotify_lyrics_cache.get(track_id.rsplit('/',1)[-1])
         if not self.lines and cached:
-            self.lines=cached;self.title.setToolTip('가사 출처: Spotify');self.render_lyrics();return
+            self.lines=cached;self.title.setToolTip('가사 출처: Spotify');self.render_lyrics();logging.warning('Spotify fallback applied: %d timed lines',len(cached));return
         if instrumental == 'temporary_error':
             self.current.setText('가사 서비스에 연결할 수 없습니다')
             self.next.setText('잠시 후 다시 시도합니다')

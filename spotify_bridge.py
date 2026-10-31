@@ -14,7 +14,7 @@ PATTERN=re.compile(r'^https://spclient\.wg\.spotify\.com/color-lyrics/v\d+/track
 
 def parse_response(body):
     data=json.loads(body);lyrics=data.get('lyrics') or {}
-    if lyrics.get('syncType')!='LINE_SYNCED':return []
+    if lyrics.get('syncType') not in ('LINE_SYNCED','SYLLABLE_SYNCED'):return []
     result=[]
     for line in lyrics.get('lines',[]):
         try:
@@ -26,6 +26,7 @@ def parse_response(body):
 
 class SpotifyBridge(QObject):
     lyrics=pyqtSignal(str,object)
+    connected=pyqtSignal(bool)
     def __init__(self):
         super().__init__();self.stopped=threading.Event();self.thread=None
     def start(self):
@@ -36,7 +37,8 @@ class SpotifyBridge(QObject):
         while not self.stopped.is_set():
             try:asyncio.run(self.listen())
             except (OSError,ValueError,KeyError,websockets.exceptions.WebSocketException,TimeoutError):pass
-            self.stopped.wait(10)
+            finally:self.connected.emit(False)
+            self.stopped.wait(5)
     async def listen(self):
         with urllib.request.urlopen(DEBUG_URL,timeout=2) as response:targets=json.load(response)
         target=next((x for x in targets if x.get('type')=='page' and x.get('url','').startswith('https://xpui.app.spotify.com/')),None)
@@ -45,7 +47,7 @@ class SpotifyBridge(QObject):
         if not socket.startswith('ws://127.0.0.1:19222/'):return
         async with websockets.connect(socket,open_timeout=3,max_size=8*1024*1024,proxy=None) as ws:
             await ws.send(json.dumps({'id':1,'method':'Network.enable'}));requests={};pending={};counter=2
-            logging.info('Spotify lyric bridge connected')
+            self.connected.emit(True);logging.info('Spotify lyric bridge connected')
             while not self.stopped.is_set():
                 try:message=json.loads(await asyncio.wait_for(ws.recv(),timeout=2))
                 except asyncio.TimeoutError:continue
