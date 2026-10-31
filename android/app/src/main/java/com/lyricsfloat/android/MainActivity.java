@@ -40,7 +40,7 @@ public final class MainActivity extends Activity {
         toggle=text("",16,BG);toggle.setTypeface(Typeface.create(Typeface.DEFAULT,Typeface.BOLD));toggle.setGravity(Gravity.CENTER);toggle.setBackground(round(PINK,16));toggle.setOnClickListener(v->{if(running()){stopService(new Intent(this,OverlayService.class));v.postDelayed(this::refreshState,300);}else startOverlay();});
         LinearLayout.LayoutParams tp=new LinearLayout.LayoutParams(-1,dp(56));tp.topMargin=dp(22);root.addView(toggle,tp);
         add(root,section("사용 방법"),28);
-        add(root,text("· 창 윗부분을 끌어서 옮깁니다.\n· 두 손가락으로 창 크기를 조절합니다.\n· 오른쪽 아래 모서리를 끌면 너비만 바뀝니다.\n· 창의 ⚙에서 투명도, 글자 크기, 색, 물결, 타임라인을 바꿉니다.",14,0xffd8d2d9),10);
+        add(root,text("· 창 윗부분을 끌어서 옮깁니다.\n· 두 손가락으로 창 크기를 조절합니다.\n· 창의 ⚙에서 투명도, 글자 크기, 색, 물결, 타임라인을 바꿉니다.",14,0xffd8d2d9),10);
         TextView info=text("가사를 찾을 때 곡 정보가 NetEase에 먼저 전송되고, 찾지 못하면 LRCLIB에 전송됩니다. 창 설정에서 NetEase를 끄면 LRCLIB만 사용합니다. 한국어 곡에 붙은 중국어 번역은 표시하지 않습니다.",12,0xff8f8a93);add(root,info,24);
         if(getIntent().getBooleanExtra("start",false))startOverlay();
     }
