@@ -49,7 +49,14 @@ def get_lyrics(track):
     headers={'User-Agent':'LyricsFloat/1.0 (desktop personal lyrics viewer)'}
     def request(endpoint, params):
         req=urllib.request.Request('https://lrclib.net/api/'+endpoint+'?'+urllib.parse.urlencode(params),headers=headers)
-        with urllib.request.urlopen(req,timeout=12) as response: return json.load(response)
+        try:
+            with urllib.request.urlopen(req,timeout=12) as response: return json.load(response)
+        except urllib.error.HTTPError as exc:
+            logging.warning('LRCLIB %s request returned HTTP %s',endpoint,exc.code)
+            raise
+        except (urllib.error.URLError,TimeoutError) as exc:
+            logging.warning('LRCLIB %s request failed: %s',endpoint,type(exc).__name__)
+            raise
     params={'track_name':track['title'],'artist_name':track['artist'],'album_name':track['album'],'duration':round(track['duration'])}
     try:
         data=request('get',params)
