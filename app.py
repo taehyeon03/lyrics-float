@@ -96,7 +96,22 @@ class Window(QWidget):
         self.current=QLabel('음악을 기다리는 중');self.current.setObjectName('lyric');self.current.setWordWrap(True);self.current.setAlignment(Qt.AlignmentFlag.AlignCenter);layout.addWidget(self.current)
         self.next=QLabel('');self.next.setObjectName('next');self.next.setWordWrap(True);self.next.setAlignment(Qt.AlignmentFlag.AlignCenter);layout.addWidget(self.next);layout.addStretch()
         self.settings_scroll=QScrollArea();self.settings_scroll.setWidgetResizable(True);self.settings_scroll.setFrameShape(QFrame.Shape.NoFrame)
-        self.settings_scroll.setStyleSheet("QScrollArea {background:transparent;border:0} QWidget#settingsContent {background:transparent} QLabel,QCheckBox {color:#f5f4f7;background:transparent} QPushButton {background:#45434d;color:#fff;padding:8px;border-radius:6px}")
+        self.settings_scroll.setStyleSheet("""
+            QScrollArea {background:transparent;border:0}
+            QWidget#settingsContent {background:transparent}
+            QLabel,QCheckBox {color:#f5f4f7;background:transparent}
+            QPushButton {background:#45434d;color:#fff;padding:8px;border-radius:6px}
+            QScrollBar:vertical {background:rgba(255,255,255,12);width:8px;margin:3px 0;border-radius:4px}
+            QScrollBar::handle:vertical {background:#827985;min-height:32px;border-radius:4px}
+            QScrollBar::handle:vertical:hover {background:#c395b2}
+            QScrollBar::add-line:vertical,QScrollBar::sub-line:vertical {height:0px}
+            QScrollBar::add-page:vertical,QScrollBar::sub-page:vertical {background:transparent}
+            QScrollBar:horizontal {background:rgba(255,255,255,12);height:8px;margin:0 3px;border-radius:4px}
+            QScrollBar::handle:horizontal {background:#827985;min-width:32px;border-radius:4px}
+            QScrollBar::handle:horizontal:hover {background:#c395b2}
+            QScrollBar::add-line:horizontal,QScrollBar::sub-line:horizontal {width:0px}
+            QScrollBar::add-page:horizontal,QScrollBar::sub-page:horizontal {background:transparent}
+        """)
         layout.addWidget(self.settings_scroll,1);self.settings_scroll.hide();scroll=self.settings_scroll
         self.options=QWidget();self.options.setObjectName('settingsContent');scroll.setWidget(self.options);bottom=QVBoxLayout(self.options);bottom.setSpacing(10)
         bottom.addWidget(QLabel('배경 투명도'))
