@@ -76,3 +76,9 @@ cd lyrics-float
 ### 개인정보
 
 가사를 찾을 때 현재 곡의 제목, 가수, 앨범, 길이를 LRCLIB에 보냅니다. 화면 설정은 `~/.config/lyrics-float/`에 저장합니다. Spotify의 로그인 정보는 요청하지 않습니다. 물결은 장식용이며 오디오를 읽거나 분석하지 않습니다.
+
+## License / 라이선스
+
+This project is licensed under the [GNU General Public License v3.0 only](LICENSE). It uses PyQt6, which is offered under GPL v3 or a separate commercial license. Third-party components and lyric services have their own terms.
+
+이 프로젝트는 [GNU 일반 공중 사용 허가서 버전 3.0만](LICENSE) 적용합니다. 사용하는 PyQt6에는 GPL v3 또는 별도의 상용 라이선스가 적용됩니다. 다른 외부 구성 요소와 가사 서비스에도 각각의 이용 조건이 있습니다.
