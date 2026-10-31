@@ -71,7 +71,7 @@ public final class OverlayService extends Service {
         wave.setSeekListener(new WaveView.SeekListener(){public void onScrub(float r){elapsed.setText(format((long)(duration*r)));}public void onSeek(float r){if(controller!=null&&duration>0)controller.getTransportControls().seekTo((long)(duration*r));}});
         controls=new LinearLayout(this);controls.setGravity(Gravity.CENTER);
         icon(controls,IconButton.PREVIOUS,38,0,v->{if(controller!=null)controller.getTransportControls().skipToPrevious();});
-        play=icon(controls,IconButton.PLAY,46,18,v->{if(controller!=null){PlaybackState p=controller.getPlaybackState();if(p!=null&&p.getState()==PlaybackState.STATE_PLAYING)controller.getTransportControls().pause();else controller.getTransportControls().play();}});play.setStrong(true);
+        play=icon(controls,IconButton.PLAY,46,18,v->{if(controller!=null){PlaybackState p=controller.getPlaybackState();if(p!=null&&p.getState()==PlaybackState.STATE_PLAYING)controller.getTransportControls().pause();else controller.getTransportControls().play();}else startSpotify();});play.setStrong(true);
         icon(controls,IconButton.NEXT,38,18,v->{if(controller!=null)controller.getTransportControls().skipToNext();});lyricsBox.addView(controls,lp(-1,-2,4));
         buildSettings();
         params=new WindowManager.LayoutParams(-1,-2,WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,PixelFormat.TRANSLUCENT);params.gravity=Gravity.TOP|Gravity.START;params.x=prefs.getInt("x",dp(12));params.y=prefs.getInt("y",dp(110));
@@ -110,6 +110,13 @@ public final class OverlayService extends Service {
         return row;
     }
     private void ring(LinearLayout row,int selected){for(int i=0;i<row.getChildCount();i++){View v=row.getChildAt(i);GradientDrawable d=new GradientDrawable();d.setShape(GradientDrawable.OVAL);d.setColor((int)v.getTag());d.setStroke(dp((int)v.getTag()==selected?3:1),(int)v.getTag()==selected?0xffff75b4:0x40ffffff);v.setBackground(d);}}
+    /** With no Spotify session, wake Spotify with a play key; if it still has none shortly after, open the app and press play again. */
+    private void startSpotify(){
+        Intent key=new Intent(Intent.ACTION_MEDIA_BUTTON).setPackage("com.spotify.music");
+        for(int action:new int[]{KeyEvent.ACTION_DOWN,KeyEvent.ACTION_UP})sendBroadcast(new Intent(key).putExtra(Intent.EXTRA_KEY_EVENT,new KeyEvent(action,KeyEvent.KEYCODE_MEDIA_PLAY)));
+        main.postDelayed(()->{if(controller!=null)return;Intent open=getPackageManager().getLaunchIntentForPackage("com.spotify.music");if(open==null){current.setText("Spotify가 설치되어 있지 않습니다");return;}
+            startActivity(open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));main.postDelayed(()->{if(controller!=null&&controller.getPlaybackState()!=null&&controller.getPlaybackState().getState()==PlaybackState.STATE_PLAYING)return;android.media.AudioManager audio=getSystemService(android.media.AudioManager.class);for(int action:new int[]{KeyEvent.ACTION_DOWN,KeyEvent.ACTION_UP})audio.dispatchMediaKeyEvent(new KeyEvent(action,KeyEvent.KEYCODE_MEDIA_PLAY));},2500);},1500);
+    }
     private void fontStep(int delta){prefs.edit().putInt("font",Math.max(15,Math.min(34,prefs.getInt("font",22)+delta))).apply();refreshAll();}
     private void toggleSettings(){boolean open=settingsBox.getVisibility()!=View.VISIBLE;settingsBox.setVisibility(open?View.VISIBLE:View.GONE);lyricsBox.setVisibility(open?View.GONE:View.VISIBLE);
         if(open){int max=getResources().getDisplayMetrics().heightPixels/2;settingsBox.getLayoutParams().height=-2;settingsBox.measure(View.MeasureSpec.makeMeasureSpec(params.width>0?params.width:getResources().getDisplayMetrics().widthPixels,View.MeasureSpec.AT_MOST),View.MeasureSpec.UNSPECIFIED);if(settingsBox.getMeasuredHeight()>max)settingsBox.getLayoutParams().height=max;settingsBox.requestLayout();}
