@@ -5,7 +5,7 @@ from PyQt6.QtGui import QColor, QFont
 from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QSlider, QCheckBox, QFrame, QSizeGrip, QColorDialog, QFontDialog, QSizePolicy, QGridLayout, QDialog, QProgressBar, QScrollArea
 from dbus_fast.aio import MessageBus
 from dbus_fast import Message, MessageType
-from visualizer import AudioWorker, MusicBars
+from visualizer import MusicBars
 
 CONFIG = Path.home()/'.config'/'lyrics-float'/'settings.json'
 
@@ -120,14 +120,13 @@ class Window(QWidget):
         self.bg_button=QPushButton('배경 색');self.bg_button.clicked.connect(self.choose_background);bottom.addWidget(self.bg_button)
         self.font_button=QPushButton('글꼴');self.font_button.clicked.connect(self.choose_font);bottom.addWidget(self.font_button)
         fontrow=QHBoxLayout();self.smaller=QPushButton('글자 작게 −');self.larger=QPushButton('글자 크게 +');self.smaller.clicked.connect(lambda:self.font_adjust(-2));self.larger.clicked.connect(lambda:self.font_adjust(2));fontrow.addWidget(self.smaller);fontrow.addWidget(self.larger);bottom.addLayout(fontrow)
-        self.bars_check=QCheckBox('소리에 반응하는 물결');self.bars_check.setToolTip('컴퓨터의 기본 출력 소리에 반응합니다');bottom.addWidget(self.bars_check)
+        self.bars_check=QCheckBox('움직이는 물결');self.bars_check.setToolTip('음악을 분석하지 않는 장식 효과입니다');bottom.addWidget(self.bars_check)
         self.timeline_check=QCheckBox('노래 타임라인 표시');bottom.addWidget(self.timeline_check)
         self.next_check=QCheckBox('다음 곡 버튼 표시');bottom.addWidget(self.next_check)
         self.bars_status=QLabel('');self.bars_status.setWordWrap(True);bottom.addWidget(self.bars_status);bottom.addStretch()
         done=QPushButton('설정 닫기');done.clicked.connect(self.open_settings);bottom.addWidget(done)
         self.settings_button.clicked.connect(self.open_settings)
         self.bars=MusicBars()
-        self.audio=AudioWorker();self.audio.levels.connect(self.audio_levels);self.audio.failed.connect(self.audio_failed)
         self.bars_check.toggled.connect(self.toggle_bars)
         self.timeline=QWidget(); timeline_layout=QHBoxLayout(self.timeline);timeline_layout.setContentsMargins(0,0,0,0);timeline_layout.setSpacing(7)
         self.elapsed=QLabel('0:00');self.elapsed.setStyleSheet('font-size:10px;color:#bcb6c0');timeline_layout.addWidget(self.elapsed)
@@ -174,14 +173,7 @@ class Window(QWidget):
         self.panel.setStyleSheet(f"QFrame#panel {{background:rgba({color.red()}, {color.green()}, {color.blue()}, {round(n*2.55)});border-radius:20px;}}")
     def toggle_bars(self,on):
         self.update_timeline_visibility();self.bars_status.setText('')
-        if on:self.audio.start()
-        else:self.audio.stop();self.bars.clear()
         if hasattr(self,'save_timer') and not self.loading_settings:self.save_settings()
-    def audio_levels(self,generation,levels):
-        if generation==self.audio.generation and self.bars_check.isChecked():self.bars.set_levels(levels)
-    def audio_failed(self,generation,message):
-        if generation==self.audio.generation:
-            self.bars_status.setText(message);self.bars.clear()
     def resize_edges(self, pos):
         margin=10; edges=Qt.Edge(0)
         if pos.x()<margin: edges|=Qt.Edge.LeftEdge
@@ -262,9 +254,9 @@ class Window(QWidget):
     def player_done(self,t):
         self.busy=False
         if not t or not t['title']:
-            self.track=None; self.playing=False; self.lines=[]; self.current.setText('음악을 기다리는 중');self.previous.setText('');self.next.setText('');self.title.setText('Spotify 데스크톱 앱에서 음악을 재생하세요');return
+            self.track=None; self.playing=False; self.bars.set_playing(False); self.lines=[]; self.current.setText('음악을 기다리는 중');self.previous.setText('');self.next.setText('');self.title.setText('Spotify 데스크톱 앱에서 음악을 재생하세요');return
         changed=not self.track or (t['id'],t['title'],t['artist']) != (self.track['id'],self.track['title'],self.track['artist'])
-        self.skip_button.setEnabled(t.get('can_next',False));self.track=t; self.base=t['position'];self.at=time.monotonic();self.playing=t['playing']; self.title.setText(t['title']+'  ·  '+t['artist']+('  ⏸' if not self.playing else ''))
+        self.skip_button.setEnabled(t.get('can_next',False));self.track=t; self.base=t['position'];self.at=time.monotonic();self.playing=t['playing'];self.bars.set_playing(self.playing); self.title.setText(t['title']+'  ·  '+t['artist']+('  ⏸' if not self.playing else ''))
         if changed:
             self.lines=[];self.plain=None;self.current.setText('가사를 찾고 있어요…');self.previous.setText('');self.next.setText('')
             self.fetch_lyrics(t)
@@ -307,7 +299,7 @@ class Window(QWidget):
     def save_settings(self):
         CONFIG.parent.mkdir(parents=True,exist_ok=True);CONFIG.write_text(json.dumps({'width':self.width(),'height':self.height(),'opacity':self.opacity.value(),'pin':self.pin.isChecked(),'font':self.fontsize,'lyric_color':self.lyric_color,'background_color':self.background_color,'music_bars':self.bars_check.isChecked(),'timeline':self.timeline_check.isChecked(),'next_button':self.next_check.isChecked(),'font_family':self.font_family},ensure_ascii=False))
     def closeEvent(self,event):
-        self.audio.stop();self.save_settings();super().closeEvent(event)
+        self.bars.timer.stop();self.save_settings();super().closeEvent(event)
 
 if __name__=='__main__':
     app=QApplication(sys.argv); w=Window(); w.show();sys.exit(app.exec())
