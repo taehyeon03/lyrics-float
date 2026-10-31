@@ -74,8 +74,10 @@ class MusicBars(QWidget):
         gradient=QLinearGradient(0,0,self.width(),0)
         for pos,color in [(0,'#79b8ff'),(.5,'#bb8cff'),(1,'#ff74b5')]:gradient.setColorAt(pos,QColor(color))
         painter.setPen(Qt.PenStyle.NoPen);painter.setBrush(gradient)
-        count=len(self.values);gap=3;bar=max(2,min(8,(self.width()-gap*(count-1))/count));total=count*bar+(count-1)*gap;left=(self.width()-total)/2
+        count=max(24,min(80,self.width()//7));gap=3;bar=max(2,(self.width()-gap*(count-1))/count);total=count*bar+(count-1)*gap;left=(self.width()-total)/2
         from PyQt6.QtCore import QRectF
-        for i,level in enumerate(self.values):
+        for i in range(count):
+            location=i*(len(self.values)-1)/max(1,count-1);left_index=int(location);fraction=location-left_index
+            level=self.values[left_index]*(1-fraction)+self.values[min(left_index+1,len(self.values)-1)]*fraction
             height=3+level*(self.height()-5)
             painter.drawRoundedRect(QRectF(left+i*(bar+gap),self.height()-height,bar,height),bar/2,bar/2)
