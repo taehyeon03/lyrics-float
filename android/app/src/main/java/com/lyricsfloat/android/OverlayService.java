@@ -92,8 +92,8 @@ public final class OverlayService extends Service {
         icon(size,IconButton.MINUS,32,0,v->fontStep(-2));fontValue=label("",14,0xfff5f4f7);size.addView(fontValue,new LinearLayout.LayoutParams(dp(40),-2));icon(size,IconButton.PLUS,32,0,v->fontStep(2));box.addView(size,lp(-1,-2,14));
         section(box,"현재 가사 색");swatches=new LinearLayout(this);swatches.setGravity(Gravity.CENTER_VERTICAL);box.addView(swatches,lp(-1,-2,8));
         for(int color:LYRIC_COLORS){View s=new View(this);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(30),dp(30));p.rightMargin=dp(12);swatches.addView(s,p);s.setTag(color);s.setOnClickListener(v->{prefs.edit().putInt("lyric_color",(int)v.getTag()).apply();refreshAll();});}
-        section(box,"표시");toggleRow(box,"움직이는 물결","wave",true);toggleRow(box,"노래 타임라인","timeline",true);toggleRow(box,"재생 제어 버튼","controls",true);toggleRow(box,"NetEase 가사 먼저 찾기","netease",true);
-        TextView note=label("가사를 찾을 때 곡 정보가 NetEase에 먼저, 없으면 LRCLIB에 전송됩니다. 끄면 LRCLIB만 사용합니다.",11,0xff99949b);note.setGravity(Gravity.START);box.addView(note,lp(-1,-2,8));
+        section(box,"표시");toggleRow(box,"움직이는 물결","wave",true);toggleRow(box,"노래 타임라인","timeline",true);toggleRow(box,"재생 제어 버튼","controls",true);toggleRow(box,"Spotify 가사 먼저 찾기","spotify",true);
+        TextView note=label("Spotify에 로그인하면 Spotify 가사를 먼저 쓰고, 없으면 LRCLIB에서 찾습니다. 끄면 LRCLIB만 사용합니다.",11,0xff99949b);note.setGravity(Gravity.START);box.addView(note,lp(-1,-2,8));
         LinearLayout buttons=new LinearLayout(this);box.addView(buttons,lp(-1,dp(42),16));
         TextView more=label("권한 · 앱 설정",13,0xfff5f4f7);more.setBackground(round(0xff45434d,12));buttons.addView(more,new LinearLayout.LayoutParams(0,-1,1));more.setOnClickListener(v->startActivity(new Intent(this,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)));
         TextView done=label("설정 닫기",13,0xff1c1d21);done.setBackground(round(0xfff5f4f7,12));LinearLayout.LayoutParams dl=new LinearLayout.LayoutParams(0,-1,1);dl.leftMargin=dp(8);buttons.addView(done,dl);done.setOnClickListener(v->toggleSettings());
@@ -117,19 +117,18 @@ public final class OverlayService extends Service {
         String song=String.valueOf(m.getString(MediaMetadata.METADATA_KEY_TITLE));String artist=String.valueOf(m.getString(MediaMetadata.METADATA_KEY_ARTIST));String album=m.getString(MediaMetadata.METADATA_KEY_ALBUM);long length=m.getLong(MediaMetadata.METADATA_KEY_DURATION);String id=m.getString(MediaMetadata.METADATA_KEY_MEDIA_ID);String key=String.valueOf(id)+"|"+song+"|"+artist+"|"+length;
         title.setText(song+" · "+artist+(source.isEmpty()?"":" · "+source));duration=length;boolean playing=state.getState()==PlaybackState.STATE_PLAYING;play.setGlyph(playing?IconButton.PAUSE:IconButton.PLAY);long pos=Math.max(0,state.getPosition());if(playing&&state.getLastPositionUpdateTime()>0)pos+=(long)((SystemClock.elapsedRealtime()-state.getLastPositionUpdateTime())*state.getPlaybackSpeed());if(duration>0)pos=Math.min(duration,pos);
         if(lyricsBox.getVisibility()==View.VISIBLE){wave.updatePlayback(playing,duration>0?(float)pos/duration:0);if(!wave.isDragging())elapsed.setText(format(pos));total.setText(format(duration));}wave.setSeekable((state.getActions()&PlaybackState.ACTION_SEEK_TO)!=0&&duration>0);
-        if(!key.equals(trackKey)){trackKey=key;generation++;source="";lines=Collections.emptyList();lookupInFlight=false;message="가사를 찾고 있어요…";retryAt=0;lookup(song,artist,album,length,generation);}
-        if(lines.isEmpty()&&!lookupInFlight&&retryAt>0&&SystemClock.elapsedRealtime()>=retryAt)lookup(song,artist,album,length,generation);
+        if(!key.equals(trackKey)){trackKey=key;generation++;source="";lines=Collections.emptyList();lookupInFlight=false;message="가사를 찾고 있어요…";retryAt=0;lookup(id,song,artist,album,length,generation);}
+        if(lines.isEmpty()&&!lookupInFlight&&retryAt>0&&SystemClock.elapsedRealtime()>=retryAt)lookup(id,song,artist,album,length,generation);
         if(lines.isEmpty()){current.setText(message);previous.setText("");next.setText("");return;}
         int selected=-1;for(int i=0;i<lines.size();i++){if(lines.get(i).ms<=pos)selected=i;else break;}current.setText(selected<0||lines.get(selected).text.isEmpty()?"♪":lines.get(selected).text);previous.setText(selected>0?lines.get(selected-1).text:"");next.setText(selected+1<lines.size()?lines.get(selected+1).text:"");
     }catch(SecurityException e){current.setText("알림 접근을 허용해 주세요");}}
-    private static final class Line{final long ms;final String text;Line(long ms,String text){this.ms=ms;this.text=text;}}
+    static final class Line{final long ms;final String text;Line(long ms,String text){this.ms=ms;this.text=text;}}
     private static final Pattern STAMP=Pattern.compile("\\[(\\d+):(\\d+(?:\\.\\d+)?)\\]");
     static List<Line> parse(String lrc){List<Line> out=new ArrayList<>();if(lrc==null)return out;for(String line:lrc.split("\\r?\\n")){Matcher m=STAMP.matcher(line);String text=STAMP.matcher(line).replaceAll("").trim();while(m.find())try{out.add(new Line((long)((Integer.parseInt(m.group(1))*60+Double.parseDouble(m.group(2)))*1000),text));}catch(NumberFormatException ignored){}}out.sort(Comparator.comparingLong(x->x.ms));return out;}
     private static String enc(String s){try{return URLEncoder.encode(s==null?"":s,"UTF-8");}catch(UnsupportedEncodingException e){throw new IllegalStateException(e);}}
     private static final class HttpResult{int code;String body;HttpResult(int c,String b){code=c;body=b;}}
-    private static HttpResult request(String url)throws IOException{return request(url,false);}
-    private static HttpResult request(String url,boolean netease)throws IOException{
-        HttpURLConnection c=(HttpURLConnection)new URL(url).openConnection();c.setConnectTimeout(10000);c.setReadTimeout(10000);c.setRequestProperty("User-Agent",netease?"Mozilla/5.0":"LyricsFloatAndroid/0.1 (https://github.com/taehyeon03/lyrics-float)");if(netease)c.setRequestProperty("Referer","https://music.163.com/");
+    private static HttpResult request(String url)throws IOException{
+        HttpURLConnection c=(HttpURLConnection)new URL(url).openConnection();c.setConnectTimeout(10000);c.setReadTimeout(10000);c.setRequestProperty("User-Agent","LyricsFloatAndroid/0.1 (https://github.com/taehyeon03/lyrics-float)");
         try{int code=c.getResponseCode();if(code!=200)return new HttpResult(code,"");try(InputStream in=c.getInputStream();ByteArrayOutputStream out=new ByteArrayOutputStream()){byte[] buf=new byte[4096];int n;while((n=in.read(buf))!=-1){if(out.size()+n>1048576)throw new IOException("response too large");out.write(buf,0,n);}return new HttpResult(code,new String(out.toByteArray(),StandardCharsets.UTF_8));}}finally{c.disconnect();}
     }
     private static String normalized(String s){return s==null?"":s.toLowerCase(Locale.ROOT).replaceAll("[^\\p{L}\\p{N}]","");}
@@ -140,35 +139,11 @@ public final class OverlayService extends Service {
             if(expectedTitle.equals(title)&&!expectedArtist.isEmpty()&&(author.equals(expectedArtist)||author.contains(expectedArtist))&&(ms<=0||diff<=10)&&diff<delta){best=x;delta=diff;}}
         return best;
     }
-    private static String baseTitle(String text){return normalized(text==null?"":text.replaceAll("(?i)\\s*[\\(\\[]\\s*(feat\\.?|ft\\.?|featuring)[^\\)\\]]*[\\)\\]]", ""));}
-    private static String queryTitle(String text){return text==null?"":text.replaceAll("(?i)\\s*[\\(\\[]\\s*(feat\\.?|ft\\.?|featuring)[^\\)\\]]*[\\)\\]]", "").trim();}
-    private static final Pattern HANGUL=Pattern.compile("[\\p{IsHangul}]"),HAN_TAIL=Pattern.compile("\\s*\\p{IsHan}[\\p{IsHan}\\p{P}\\s]*$"),CREDIT=Pattern.compile("^(作词|作曲|编曲|制作人|演唱|和声|混音|母带|录音|监制|出品|吉他|贝斯|鼓|键盘|弦乐)[^:：]*[:：]");
-    /** NetEase often appends a Chinese translation to each Korean line; keep only the original when the song is Korean. */
-    static List<Line> stripTranslation(List<Line> in){boolean korean=false;for(Line l:in)if(HANGUL.matcher(l.text).find()){korean=true;break;}if(!korean)return in;
-        List<Line> out=new ArrayList<>();for(Line l:in){if(CREDIT.matcher(l.text).find())continue;String t=HAN_TAIL.matcher(l.text).replaceAll("").trim();if(t.isEmpty()&&!l.text.isEmpty())continue;out.add(new Line(l.ms,t));}return out;}
-    private static List<Line> neteaseLookup(String song,String artist,String album,long ms)throws Exception{
-        String query=queryTitle(song)+" "+artist.split(",")[0].trim();
-        HttpResult search=request("https://music.163.com/api/search/get?type=1&limit=20&s="+enc(query),true);
-        if(search.code!=200)throw new IOException("NetEase search unavailable");
-        JSONArray songs=new JSONObject(search.body).optJSONObject("result")==null?new JSONArray():new JSONObject(search.body).getJSONObject("result").optJSONArray("songs");
-        if(songs==null)return Collections.emptyList();
-        JSONObject best=null;double bestDelta=Double.MAX_VALUE;String wantedTitle=baseTitle(song),wantedAlbum=normalized(album),wantedArtist=normalized(artist.split(",")[0]);
-        for(int i=0;i<songs.length();i++){
-            JSONObject item=songs.optJSONObject(i);if(item==null||!wantedTitle.equals(baseTitle(item.optString("name"))))continue;
-            double delta=Math.abs(item.optLong("duration")-ms);if(ms<=0||delta>3000)continue;
-            JSONObject al=item.optJSONObject("album");boolean albumMatch=al!=null&&!wantedAlbum.isEmpty()&&wantedAlbum.equals(normalized(al.optString("name")));
-            boolean artistMatch=false;JSONArray artists=item.optJSONArray("artists");if(artists!=null)for(int j=0;j<artists.length();j++){JSONObject a=artists.optJSONObject(j);if(a!=null&&!wantedArtist.isEmpty()&&wantedArtist.equals(normalized(a.optString("name"))))artistMatch=true;}
-            if((albumMatch||artistMatch)&&delta<bestDelta){best=item;bestDelta=delta;}
-        }
-        if(best==null)return Collections.emptyList();
-        HttpResult response=request("https://music.163.com/api/song/lyric?lv=1&tv=-1&id="+best.optLong("id"),true);
-        if(response.code!=200)throw new IOException("NetEase lyrics unavailable");
-        JSONObject lrc=new JSONObject(response.body).optJSONObject("lrc");return lrc==null?Collections.emptyList():stripTranslation(parse(lrc.optString("lyric",null)));
-    }
-    private void lookup(String song,String artist,String album,long ms,int requested){lookupInFlight=true;final boolean useNetease=getSharedPreferences("display",MODE_PRIVATE).getBoolean("netease",true);io.execute(()->{List<Line> found=Collections.emptyList();String result="가사를 찾지 못했습니다";String from="LRCLIB";boolean transientError=false;
-        if(useNetease){
-            try{List<Line> alt=neteaseLookup(song,artist,album,ms);if(!alt.isEmpty()){found=alt;from="NetEase";transientError=false;android.util.Log.i("LyricsFloat","NetEase synced lyrics found");}}
-            catch(Exception e){android.util.Log.w("LyricsFloat","NetEase request failed: "+e.getClass().getSimpleName());}
+    private void lookup(String mediaId,String song,String artist,String album,long ms,int requested){lookupInFlight=true;final boolean wantSpotify=prefs.getBoolean("spotify",true),useSpotify=wantSpotify&&SpotifyLyrics.loggedIn();io.execute(()->{List<Line> found=Collections.emptyList();String result="가사를 찾지 못했습니다";String from="LRCLIB";boolean transientError=false;String spotifyStatus=null;
+        if(useSpotify){
+            try{SpotifyLyrics.Result r=SpotifyLyrics.lookup(this,mediaId,song,artist,ms);if(!r.lines.isEmpty()){found=r.lines;from="Spotify";}else spotifyStatus=r.status;}
+            catch(Exception e){android.util.Log.w("LyricsFloat","Spotify request failed: "+e);spotifyStatus="Spotify 오류 ("+e.getClass().getSimpleName()+")";}
+        }else if(wantSpotify){spotifyStatus="Spotify 로그인 안 됨";
         }
         if(found.isEmpty())try{
           String url="https://lrclib.net/api/get?track_name="+enc(song)+"&artist_name="+enc(artist)+"&album_name="+enc(album)+"&duration="+(ms/1000);
@@ -182,6 +157,7 @@ public final class OverlayService extends Service {
           }else{result="가사 서비스 연결 오류 · 다시 시도합니다";transientError=true;}
           if(data!=null){found=parse(data.optString("syncedLyrics",null));result=data.optBoolean("instrumental",false)?"연주곡입니다":(data.isNull("plainLyrics")?"가사를 찾지 못했습니다":"동기화된 가사가 없습니다");transientError=false;}
         }catch(Exception e){android.util.Log.w("LyricsFloat","Lyrics request failed: "+e.getClass().getSimpleName());result="가사 서비스 연결 오류 · 다시 시도합니다";transientError=true;}
+        if(found.isEmpty()&&spotifyStatus!=null)result=spotifyStatus+" · LRCLIB "+(transientError?"연결 오류":"없음");
         final List<Line> fetched=found;final String status=result;final String provider=found.isEmpty()?"":from;final boolean retry=transientError;main.post(()->{if(requested!=generation)return;lookupInFlight=false;lines=fetched;source=provider;message=status;retryAt=retry?SystemClock.elapsedRealtime()+15000:0;});});}
     @Override public int onStartCommand(Intent intent,int flags,int id){return START_NOT_STICKY;}
     @Override public void onDestroy(){main.removeCallbacksAndMessages(null);io.shutdownNow();try{unregisterReceiver(refresh);}catch(IllegalArgumentException ignored){}if(root!=null&&root.isAttachedToWindow())windows.removeView(root);super.onDestroy();}

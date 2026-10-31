@@ -23,7 +23,7 @@ import android.widget.Toast;
 /** Setup screen: permissions and starting the panel. Appearance lives in the panel's own ⚙ settings, as on the desktop. */
 public final class MainActivity extends Activity {
     private static final int BG=0xff1c1d21,CARD=0xff26252c,PINK=0xffff75b4;
-    private TextView notifyState,overlayState,toggle;
+    private TextView notifyState,overlayState,spotifyState,toggle;
     private int dp(float n) { return (int)(n * getResources().getDisplayMetrics().density + .5f); }
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -37,11 +37,12 @@ public final class MainActivity extends Activity {
         add(root,section("준비"),28);
         notifyState=step(root,"1","알림 접근","Spotify의 곡 이름과 재생 위치를 읽습니다. 다른 알림 내용은 읽지 않습니다.",()->startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)));
         overlayState=step(root,"2","다른 앱 위에 표시","가사 창을 다른 앱 위에 띄웁니다.",()->startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,Uri.parse("package:"+getPackageName()))));
+        spotifyState=step(root,"3","Spotify 로그인 (선택)","Spotify 가사를 사용합니다. Spotify 공식 기능이 아니며 약관에 어긋날 수 있습니다. 로그인 정보는 이 휴대폰에만 남습니다.",this::spotifyAccount);
         toggle=text("",16,BG);toggle.setTypeface(Typeface.create(Typeface.DEFAULT,Typeface.BOLD));toggle.setGravity(Gravity.CENTER);toggle.setBackground(round(PINK,16));toggle.setOnClickListener(v->{if(running()){stopService(new Intent(this,OverlayService.class));v.postDelayed(this::refreshState,300);}else startOverlay();});
         LinearLayout.LayoutParams tp=new LinearLayout.LayoutParams(-1,dp(56));tp.topMargin=dp(22);root.addView(toggle,tp);
         add(root,section("사용 방법"),28);
         add(root,text("· 창의 아무 곳이나 끌어서 옮깁니다.\n· 두 손가락으로 창 크기를 조절합니다.\n· 창의 ⚙에서 투명도, 글자 크기, 색, 물결, 타임라인을 바꿉니다.",14,0xffd8d2d9),10);
-        TextView info=text("가사를 찾을 때 곡 정보가 NetEase에 먼저 전송되고, 찾지 못하면 LRCLIB에 전송됩니다. 창 설정에서 NetEase를 끄면 LRCLIB만 사용합니다. 한국어 곡에 붙은 중국어 번역은 표시하지 않습니다.",12,0xff8f8a93);add(root,info,24);
+        TextView info=text("Spotify에 로그인하면 Spotify의 가사를 먼저 사용하고, 없으면 곡 정보를 LRCLIB에 보내 찾습니다. 로그인하지 않으면 LRCLIB만 사용합니다. 창 설정에서 Spotify 가사를 끌 수도 있습니다.",12,0xff8f8a93);add(root,info,24);
         if(getIntent().getBooleanExtra("start",false))startOverlay();
     }
     private TextView text(String value,int sp,int color) { TextView v=new TextView(this);v.setText(value);v.setTextSize(sp);v.setTextColor(color);v.setLineSpacing(0,1.15f);return v; }
@@ -61,6 +62,10 @@ public final class MainActivity extends Activity {
         TextView chip=text("",12,0xfff4f2f4);chip.setGravity(Gravity.CENTER);chip.setPadding(dp(12),dp(6),dp(12),dp(6));row.addView(chip);
         row.setOnClickListener(v->action.run());LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.topMargin=dp(10);root.addView(row,p);return chip;
     }
+    private void spotifyAccount(){
+        if(!SpotifyLyrics.loggedIn()){new android.app.AlertDialog.Builder(this).setTitle("Spotify 가사 연결").setMessage("Spotify 웹사이트에 직접 로그인합니다. 앱은 비밀번호를 보지 않지만, Spotify가 만든 로그인 정보(쿠키)를 이 휴대폰에 저장하고 가사를 가져올 때 사용합니다.\n\n공식 기능이 아니므로 Spotify 약관에 어긋날 수 있고, Spotify가 바꾸면 작동하지 않을 수 있습니다. 휴대폰을 다른 사람이 쓰면 계정에 접근할 수 있으니 주의하세요.").setPositiveButton("로그인",(d,w)->startActivity(new Intent(this,SpotifyLogin.class))).setNegativeButton("취소",null).show();return;}
+        new android.app.AlertDialog.Builder(this).setTitle("Spotify 연결 해제").setMessage("이 휴대폰에 저장된 Spotify 로그인 정보를 지웁니다.").setPositiveButton("로그아웃",(d,w)->{SpotifyLyrics.logout();refreshState();}).setNegativeButton("취소",null).show();
+    }
     private void mark(TextView chip,boolean ok){chip.setText(ok?"허용됨":"허용하기");chip.setTextColor(ok?0xffb6b1b7:BG);chip.setBackground(round(ok?0x1effffff:PINK,12));}
     private boolean notificationAccess() {
         ComponentName component=new ComponentName(this,PlaybackListener.class);
@@ -72,7 +77,7 @@ public final class MainActivity extends Activity {
     }
     @SuppressWarnings("deprecation")
     private boolean running(){for(ActivityManager.RunningServiceInfo s:getSystemService(ActivityManager.class).getRunningServices(20))if(s.service.getClassName().equals(OverlayService.class.getName()))return true;return false;}
-    private void refreshState(){mark(notifyState,notificationAccess());mark(overlayState,Settings.canDrawOverlays(this));boolean on=running();toggle.setText(on?"가사 창 닫기":"가사 창 띄우기");toggle.setTextColor(on?0xfff4f2f4:BG);toggle.setBackground(round(on?0xff45434d:PINK,16));}
+    private void refreshState(){mark(notifyState,notificationAccess());mark(overlayState,Settings.canDrawOverlays(this));boolean spotify=SpotifyLyrics.loggedIn();spotifyState.setText(spotify?"연결됨":"로그인");spotifyState.setTextColor(spotify?0xffb6b1b7:0xfff4f2f4);spotifyState.setBackground(round(spotify?0x1effffff:0xff45434d,12));boolean on=running();toggle.setText(on?"가사 창 닫기":"가사 창 띄우기");toggle.setTextColor(on?0xfff4f2f4:BG);toggle.setBackground(round(on?0xff45434d:PINK,16));}
     @Override protected void onResume(){super.onResume();refreshState();}
     private void startOverlay(){
         if(!notificationAccess()){Toast.makeText(this,"먼저 알림 접근을 허용해 주세요.",Toast.LENGTH_LONG).show();return;}

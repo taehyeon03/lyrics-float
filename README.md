@@ -117,22 +117,31 @@ The app targets Android 8.0 (API 26) or later. It has only been tested on the de
 3. Open **가사 플로팅** (Lyrics Float).
 4. Select **알림 접근** (notification access) and turn it on for 가사 플로팅. If Android says the setting is restricted, open the app's info page, select ⋮ → **Allow restricted settings**, and try again.
 5. Select **다른 앱 위에 표시** (display over other apps) and allow it.
-6. Play a song in Spotify, then select **가사 창 띄우기** (show lyrics panel).
+6. Optional: select **Spotify 로그인** (Spotify sign-in) and sign in on Spotify's own page to use Spotify's lyrics. Read the warning below first.
+7. Play a song in Spotify, then select **가사 창 띄우기** (show lyrics panel).
 
 **Using the panel**
 
 - Drag anywhere on the panel to move it. Pinch with two fingers to resize the panel and the lyric text together around the point between your fingers.
 - Use the timeline to see and change the playback position. Use the buttons for previous, play/pause, and next.
-- Select ⚙ to change opacity, text size, and lyric color. You can also turn the wave, the timeline, the playback buttons, and NetEase lookup on or off.
+- Select ⚙ to change opacity, text size, and lyric color. You can also turn the wave, the timeline, the playback buttons, and Spotify lyrics on or off.
 - Select × to close the panel.
 
 **How lyrics are found**
 
-The app reads the title, artist, album, duration, and position of the Spotify track from Android's media session. Notification access is needed only for this; the app does not read other notifications. It looks up time-synced lyrics on NetEase Cloud Music first and then on LRCLIB. For Korean songs, Chinese translations that NetEase adds to each line are removed. Turn off **NetEase 가사 먼저 찾기** to use LRCLIB only. The app does not read Spotify's own lyrics.
+The app reads the title, artist, album, duration, and position of the Spotify track from Android's media session. Notification access is needed only for this; the app does not read other notifications. If you are signed in to Spotify, the app uses Spotify's own time-synced lyrics first. Otherwise, or when Spotify has none, it looks them up on LRCLIB. Turn off **Spotify 가사 먼저 찾기** in the panel settings to use LRCLIB only.
+
+**Spotify sign-in (unofficial, optional)**
+
+Spotify has no public lyrics API. When you sign in, the app keeps the session cookie that Spotify's website sets on the phone. To get lyrics, it briefly opens Spotify's web player in a hidden view, reuses the access token that the player sends, and closes the player. The hidden player is blocked from registering as a Spotify Connect device, so it does not take over playback. The app never sees your password, and the token stays in memory.
+
+- This is not an official Spotify feature. It may break the Spotify Terms of Use and may stop working whenever Spotify changes its web player.
+- Anyone who can use your unlocked phone could use the stored session. Select the Spotify card again to sign out and delete the cookie.
+- Signing in with Google may be blocked inside the app; signing in with email and password works.
 
 **Privacy**
 
-Track metadata is sent to NetEase and, when needed, LRCLIB. Settings are stored only on the phone. The wave is decorative and does not record or analyze audio. No account or password is required.
+When signed in, requests go only to Spotify. When Spotify has no lyrics, or you are not signed in, track metadata is sent to LRCLIB. Settings and the Spotify session cookie are stored only on the phone. The wave is decorative and does not record or analyze audio.
 
 **Build from source**
 
@@ -167,22 +176,31 @@ Android 8.0(API 26) 이상을 대상으로 합니다. 위 기기에서만 확인
 3. **가사 플로팅** 앱을 엽니다.
 4. **알림 접근**을 눌러 가사 플로팅을 켭니다. "제한된 설정"이라는 안내가 나오면 앱 정보 화면에서 ⋮ → **제한된 설정 허용**을 누른 뒤 다시 시도합니다.
 5. **다른 앱 위에 표시**를 눌러 허용합니다.
-6. Spotify에서 노래를 재생하고 **가사 창 띄우기**를 누릅니다.
+6. 선택 사항: Spotify 가사를 쓰려면 **Spotify 로그인**을 누르고 Spotify 로그인 페이지에서 직접 로그인합니다. 먼저 아래 안내를 읽어 주세요.
+7. Spotify에서 노래를 재생하고 **가사 창 띄우기**를 누릅니다.
 
 **가사 창 사용법**
 
 - 창의 아무 곳이나 끌어서 옮깁니다. 두 손가락으로 벌리거나 오므리면 두 손가락 사이를 중심으로 창과 가사 글자 크기가 함께 바뀝니다.
 - 타임라인에서 재생 위치를 보고 바꿀 수 있습니다. 버튼으로 이전 곡, 재생·일시 정지, 다음 곡을 조작합니다.
-- ⚙를 눌러 투명도, 글자 크기, 가사 색을 바꿉니다. 물결, 타임라인, 재생 버튼, NetEase 검색도 각각 켜고 끌 수 있습니다.
+- ⚙를 눌러 투명도, 글자 크기, 가사 색을 바꿉니다. 물결, 타임라인, 재생 버튼, Spotify 가사도 각각 켜고 끌 수 있습니다.
 - ×를 눌러 창을 닫습니다.
 
 **가사를 찾는 방식**
 
-Android의 미디어 세션에서 Spotify 곡의 제목, 가수, 앨범, 길이, 재생 위치를 읽습니다. 알림 접근 권한은 이 정보를 읽는 데만 쓰며, 다른 알림은 읽지 않습니다. 시간 정보가 있는 가사를 NetEase Cloud Music에서 먼저 찾고, 없으면 LRCLIB에서 찾습니다. 한국어 곡이면 NetEase가 줄마다 붙여 둔 중국어 번역을 지우고 보여 줍니다. **NetEase 가사 먼저 찾기**를 끄면 LRCLIB만 사용합니다. Spotify 자체 가사를 읽지는 않습니다.
+Android의 미디어 세션에서 Spotify 곡의 제목, 가수, 앨범, 길이, 재생 위치를 읽습니다. 알림 접근 권한은 이 정보를 읽는 데만 쓰며, 다른 알림은 읽지 않습니다. Spotify에 로그인했다면 Spotify의 시간 정보가 있는 가사를 먼저 사용합니다. 로그인하지 않았거나 Spotify에 가사가 없으면 LRCLIB에서 찾습니다. 창 설정에서 **Spotify 가사 먼저 찾기**를 끄면 LRCLIB만 사용합니다.
+
+**Spotify 로그인 (비공식, 선택 사항)**
+
+Spotify는 가사를 위한 공개 API를 제공하지 않습니다. 로그인하면 Spotify 웹사이트가 만든 로그인 쿠키를 휴대폰에 보관합니다. 가사를 가져올 때 보이지 않는 화면에서 Spotify 웹 플레이어를 잠깐 열어 플레이어가 보내는 접근 토큰을 사용하고, 플레이어를 바로 닫습니다. 숨긴 플레이어가 Spotify Connect 기기로 등록되지 않게 막아서 재생을 가져가지 않습니다. 앱은 비밀번호를 보지 않으며 토큰은 메모리에만 둡니다.
+
+- Spotify 공식 기능이 아닙니다. Spotify 이용약관에 어긋날 수 있고, Spotify가 웹 플레이어를 바꾸면 작동하지 않을 수 있습니다.
+- 잠금이 풀린 휴대폰을 다른 사람이 쓰면 저장된 로그인으로 계정에 접근할 수 있습니다. Spotify 카드를 다시 누르면 로그아웃하고 쿠키를 지웁니다.
+- 앱 안에서는 Google 로그인이 막힐 수 있습니다. 이메일과 비밀번호로 로그인하면 됩니다.
 
 **개인정보**
 
-곡 정보가 NetEase로, 필요하면 LRCLIB로 전송됩니다. 설정은 휴대폰에만 저장됩니다. 물결은 장식이며 오디오를 녹음하거나 분석하지 않습니다. 계정이나 비밀번호가 필요하지 않습니다.
+로그인한 경우 요청은 Spotify로만 갑니다. Spotify에 가사가 없거나 로그인하지 않았으면 곡 정보가 LRCLIB로 전송됩니다. 설정과 Spotify 로그인 쿠키는 휴대폰에만 저장됩니다. 물결은 장식이며 오디오를 녹음하거나 분석하지 않습니다.
 
 **직접 빌드하기**
 
