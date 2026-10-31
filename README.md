@@ -25,7 +25,7 @@ cd lyrics-float
 ./실행하기.sh
 ```
 
-GitHub access to this private repository is required to clone it. Setup creates a user-local application shortcut. Search for **Lyrics Float** in the app menu. If you move the folder, run `./setup.sh` again. Setup uses `uv` when it is available and otherwise uses `pip`. The launcher runs the app in your desktop user session. This allows the app to read the MPRIS interface of Spotify's Snap package without changing its security policy.
+Setup creates a user-local application shortcut. Search for **Lyrics Float** in the app menu. If you move the folder, run `./setup.sh` again. Setup uses `uv` when it is available and otherwise uses `pip`. The launcher runs the app in your desktop user session. This allows the app to read the MPRIS interface of Spotify's Snap package without changing its security policy.
 
 ### Controls
 
@@ -49,7 +49,7 @@ The app sends the title, artist, album, and duration of the current track to LRC
 
 Ubuntu의 그래픽 환경과 Spotify 데스크톱 앱이 필요합니다. 브라우저에서 재생하는 Spotify는 아직 지원하지 않습니다. 인터넷과 Python 3.10 이상도 필요합니다. 현재 Ubuntu 24.04의 x86-64 컴퓨터에서 확인했습니다. 다른 Ubuntu 버전과 CPU에서는 아직 검증하지 못했습니다.
 
-비공개 저장소에 접근할 수 있는 GitHub 계정으로 인증한 뒤 아래 명령을 실행하세요.
+터미널에서 아래 명령을 실행하세요.
 
 ```bash
 sudo apt install git python3-venv libxcb-cursor0
