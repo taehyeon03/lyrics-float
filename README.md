@@ -85,10 +85,10 @@ This project is licensed under the [GNU General Public License v3.0 only](LICENS
 
 ### Experimental Spotify fallback / Spotify 보조 가사 (실험 기능)
 
-If LRCLIB cannot provide synced lyrics, the app can use lyrics that the Spotify desktop client loads. On Ubuntu, close Spotify completely, select **Spotify 가사 연결 실행** in the app settings, then open Spotify's lyrics view while listening. Snap and standard package launchers are detected; other installation types have not been tested. Keep that view open as tracks change. The lyrics are kept only in memory and matched by track ID. This is an unofficial method and may stop working after Spotify updates. Re-run `./setup.sh` after updating to install the additional dependency.
+If LRCLIB cannot provide synced lyrics, the app can use lyrics that the Spotify desktop client loads. On Ubuntu, close Spotify completely, select **Spotify 가사 연결 실행** in the app settings, then open Spotify's lyrics view while listening. Snap and standard package launchers are detected; other installation types have not been tested. Keep that view open as tracks change. The app also checks the currently open lyrics view when it connects. The lyrics are kept only in memory and matched by track ID. This is an unofficial method and may stop working after Spotify updates. Re-run `./setup.sh` after updating to install the additional dependency.
 
 **Security:** this mode opens Spotify's debugging interface on `127.0.0.1:19222`. Other local processes can potentially control the Spotify session while it is open. Close Spotify completely and reopen it normally to turn the interface off. It is not reachable directly from other computers through this listening address.
 
-LRCLIB에서 동기화된 가사를 찾지 못하면 Spotify가 직접 불러온 가사를 보조로 사용할 수 있습니다. Ubuntu에서 Spotify를 완전히 종료한 다음 앱의 설정에서 **Spotify 가사 연결 실행**을 누르세요. Snap과 일반 패키지 실행 경로를 감지합니다. 다른 설치 방식은 검증하지 않았습니다. 노래를 재생하면서 Spotify의 가사 창을 열고 유지하세요. 가사는 곡 ID로 구분하며 메모리에만 보관합니다. 비공식 방식이라 Spotify 업데이트 후 작동하지 않을 수 있습니다. 업데이트한 뒤에는 `./setup.sh`를 다시 실행해 필요한 라이브러리를 설치하세요.
+LRCLIB에서 동기화된 가사를 찾지 못하면 Spotify가 직접 불러온 가사를 보조로 사용할 수 있습니다. Ubuntu에서 Spotify를 완전히 종료한 다음 앱의 설정에서 **Spotify 가사 연결 실행**을 누르세요. Snap과 일반 패키지 실행 경로를 감지합니다. 다른 설치 방식은 검증하지 않았습니다. 노래를 재생하면서 Spotify의 가사 창을 열고 유지하세요. 연결할 때 이미 열려 있는 가사도 확인합니다. 가사는 곡 ID로 구분하며 메모리에만 보관합니다. 비공식 방식이라 Spotify 업데이트 후 작동하지 않을 수 있습니다. 업데이트한 뒤에는 `./setup.sh`를 다시 실행해 필요한 라이브러리를 설치하세요.
 
 **보안:** 이 모드에서는 Spotify의 디버그 인터페이스가 `127.0.0.1:19222`에서 열립니다. 이 컴퓨터의 다른 프로세스가 Spotify 세션을 제어할 가능성이 있습니다. 인터페이스를 닫으려면 Spotify를 완전히 종료한 뒤 평소 방식으로 다시 실행하세요. 이 주소는 다른 컴퓨터에서 직접 접근할 수 없습니다.
