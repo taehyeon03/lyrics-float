@@ -5,6 +5,7 @@ from PyQt6.QtGui import QColor, QFont
 from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QSlider, QCheckBox, QFrame, QSizeGrip, QColorDialog, QFontDialog, QSizePolicy, QGridLayout
 from dbus_fast.aio import MessageBus
 from dbus_fast import Message, MessageType
+from visualizer import AudioWorker, MusicBars
 
 CONFIG = Path.home()/'.config'/'lyrics-float'/'settings.json'
 
@@ -86,6 +87,10 @@ class Window(QWidget):
         self.font_button=QPushButton('글꼴');self.font_button.clicked.connect(self.choose_font);bottom.addWidget(self.font_button,1,2)
         self.smaller=QPushButton('가 −');self.larger=QPushButton('가 +');self.smaller.clicked.connect(lambda:self.font_adjust(-2));self.larger.clicked.connect(lambda:self.font_adjust(2));bottom.addWidget(self.smaller,1,3);bottom.addWidget(self.larger,1,4);layout.addWidget(self.options)
         self.options.hide();self.settings_button.clicked.connect(lambda:self.options.setVisible(not self.options.isVisible()))
+        self.bars=MusicBars();self.bars.hide();layout.addWidget(self.bars)
+        self.audio=AudioWorker();self.audio.levels.connect(self.audio_levels);self.audio.failed.connect(self.audio_failed)
+        self.bars_check=QCheckBox('음악 바');self.bars_check.setToolTip('컴퓨터의 기본 출력 소리에 반응합니다');bottom.addWidget(self.bars_check,2,0,1,2)
+        self.bars_status=QLabel('');bottom.addWidget(self.bars_status,2,2,1,3);self.bars_check.toggled.connect(self.toggle_bars)
         griprow=QHBoxLayout();griprow.addStretch();grip=QSizeGrip(self);grip.setStyleSheet('background:transparent;width:14px;height:14px');griprow.addWidget(grip);layout.addLayout(griprow)
         for label in (self.title,self.previous,self.current,self.next):
             label.setSizePolicy(QSizePolicy.Policy.Ignored,QSizePolicy.Policy.Ignored if label is not self.title else QSizePolicy.Policy.Preferred)
@@ -99,6 +104,16 @@ class Window(QWidget):
     def update_background(self,n):
         color=QColor(self.background_color)
         self.panel.setStyleSheet(f"QFrame#panel {{background:rgba({color.red()}, {color.green()}, {color.blue()}, {round(n*2.55)});border-radius:20px;}}")
+    def toggle_bars(self,on):
+        self.bars.setVisible(on);self.bars_status.setText('')
+        if on:self.audio.start()
+        else:self.audio.stop();self.bars.clear()
+        if hasattr(self,'save_timer'):self.save_settings()
+    def audio_levels(self,generation,levels):
+        if generation==self.audio.generation and self.bars_check.isChecked():self.bars.set_levels(levels)
+    def audio_failed(self,generation,message):
+        if generation==self.audio.generation:
+            self.bars_status.setText('오디오 연결 오류');self.bars_status.setToolTip(message);self.bars.clear()
     def resize_edges(self, pos):
         margin=10; edges=Qt.Edge(0)
         if pos.x()<margin: edges|=Qt.Edge.LeftEdge
@@ -216,12 +231,12 @@ class Window(QWidget):
         self.next.setText(self.lines[i+1][1] if i+1<len(self.lines) else '')
     def load_settings(self):
         try:
-            x=json.loads(CONFIG.read_text());self.resize(x.get('width',540),x.get('height',240));self.opacity.setValue(x.get('opacity',90));self.pin.setChecked(x.get('pin',True));self.fontsize=x.get('font',23);self.lyric_color=x.get('lyric_color','#ff75b4');self.background_color=x.get('background_color','#1c1d21');self.font_family=x.get('font_family','sans-serif');self.font_adjust(0)
+            x=json.loads(CONFIG.read_text());self.resize(x.get('width',540),x.get('height',240));self.opacity.setValue(x.get('opacity',90));self.pin.setChecked(x.get('pin',True));self.bars_check.setChecked(bool(x.get('music_bars',False)));self.fontsize=x.get('font',23);self.lyric_color=x.get('lyric_color','#ff75b4');self.background_color=x.get('background_color','#1c1d21');self.font_family=x.get('font_family','sans-serif');self.font_adjust(0)
         except (OSError,ValueError,TypeError):pass
     def save_settings(self):
-        CONFIG.parent.mkdir(parents=True,exist_ok=True);CONFIG.write_text(json.dumps({'width':self.width(),'height':self.height(),'opacity':self.opacity.value(),'pin':self.pin.isChecked(),'font':self.fontsize,'lyric_color':self.lyric_color,'background_color':self.background_color,'font_family':self.font_family},ensure_ascii=False))
+        CONFIG.parent.mkdir(parents=True,exist_ok=True);CONFIG.write_text(json.dumps({'width':self.width(),'height':self.height(),'opacity':self.opacity.value(),'pin':self.pin.isChecked(),'font':self.fontsize,'lyric_color':self.lyric_color,'background_color':self.background_color,'music_bars':self.bars_check.isChecked(),'font_family':self.font_family},ensure_ascii=False))
     def closeEvent(self,event):
-        self.save_settings();super().closeEvent(event)
+        self.audio.stop();self.save_settings();super().closeEvent(event)
 
 if __name__=='__main__':
     app=QApplication(sys.argv); w=Window(); w.show();sys.exit(app.exec())
