@@ -12,7 +12,7 @@ class MusicBars(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.timer=QTimer(self);self.timer.setInterval(40);self.timer.timeout.connect(self.tick)
     def tick(self):
-        now=time.monotonic();self.phase+=(now-self.last_tick)*1.35;self.last_tick=now;self.update()
+        now=time.monotonic();self.phase+=(now-self.last_tick)*2.0;self.last_tick=now;self.update()
     def sync_timer(self):
         if self.wave_enabled and self.playing and self.isVisible():
             if not self.timer.isActive():self.last_tick=time.monotonic();self.timer.start()
@@ -35,10 +35,10 @@ class MusicBars(QWidget):
             if wave_width>1:
                 for layer in range(3):
                     path=QPainterPath();path.moveTo(start,baseline)
-                    amplitude=(self.height()-9)*(.45+.13*math.sin(self.phase*.7+layer))
+                    amplitude=(self.height()-9)*(.68+.22*math.sin(self.phase*.9+layer*.9))
                     for i in range(1,40):
                         x=i/40;envelope=math.sin(math.pi*x)**1.1
-                        variation=.6+.32*math.sin(x*math.pi*(2+layer)+self.phase*(1 if layer!=1 else -1)+layer*1.6)
+                        variation=.58+.4*math.sin(x*math.pi*(2+layer)+self.phase*(1 if layer!=1 else -1)+layer*1.6)
                         path.lineTo(start+wave_width*x,baseline-amplitude*envelope*variation)
                     path.lineTo(start+wave_width,baseline);path.closeSubpath()
                     gradient=QLinearGradient(start,0,start+wave_width,0)
