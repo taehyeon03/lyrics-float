@@ -45,7 +45,14 @@ public final class OverlayService extends Service {
     private IconButton icon(LinearLayout row,int glyph,int size,int gap,View.OnClickListener click){IconButton b=new IconButton(this,glyph);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(size),dp(size));p.leftMargin=dp(gap);row.addView(b,p);b.setOnClickListener(click);return b;}
     private void refreshAll(){applyAppearance();sendBroadcast(new Intent(ACTION_REFRESH).setPackage(getPackageName()));}
     private void buildPanel(){
-        root=new FrameLayout(this);panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setPadding(dp(16),dp(10),dp(12),dp(12));root.addView(panel,new FrameLayout.LayoutParams(-1,-2));
+        root=new FrameLayout(this){
+            final ScaleGestureDetector pinch=new ScaleGestureDetector(OverlayService.this,new ScaleGestureDetector.SimpleOnScaleGestureListener(){float scale;int startWidth,startFont;
+                @Override public boolean onScaleBegin(ScaleGestureDetector d){scale=1;startWidth=params.width;startFont=prefs.getInt("font",22);return true;}
+                @Override public boolean onScale(ScaleGestureDetector d){scale*=d.getScaleFactor();int screen=getResources().getDisplayMetrics().widthPixels;params.width=Math.max(dp(240),Math.min(screen,(int)(startWidth*scale)));keepOnScreen();windows.updateViewLayout(root,params);current.setTextSize(Math.max(15,Math.min(34,Math.round(startFont*scale))));return true;}
+                @Override public void onScaleEnd(ScaleGestureDetector d){prefs.edit().putInt("width",Math.round(params.width*100f/getResources().getDisplayMetrics().widthPixels)).putInt("font",Math.max(15,Math.min(34,Math.round(startFont*scale)))).putInt("x",params.x).apply();applyAppearance();}});
+            @Override public boolean dispatchTouchEvent(MotionEvent e){pinch.onTouchEvent(e);return super.dispatchTouchEvent(e);}
+            @Override public boolean onInterceptTouchEvent(MotionEvent e){return e.getPointerCount()>1||super.onInterceptTouchEvent(e);}
+            @Override public boolean onTouchEvent(MotionEvent e){return true;}};panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setPadding(dp(16),dp(10),dp(12),dp(12));root.addView(panel,new FrameLayout.LayoutParams(-1,-2));
         LinearLayout header=new LinearLayout(this);header.setGravity(Gravity.CENTER_VERTICAL);title=label("Spotify를 기다리는 중",11,0xffb6b1b7);title.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);title.setSingleLine(true);title.setEllipsize(TextUtils.TruncateAt.END);header.addView(title,new LinearLayout.LayoutParams(0,dp(32),1));
         icon(header,IconButton.SETTINGS,30,8,v->toggleSettings());icon(header,IconButton.CLOSE,30,8,v->stopSelf());panel.addView(header);
         lyricsBox=new LinearLayout(this);lyricsBox.setOrientation(LinearLayout.VERTICAL);lyricsBox.setGravity(Gravity.CENTER);panel.addView(lyricsBox,lp(-1,-2,4));
